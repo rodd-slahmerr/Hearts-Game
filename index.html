@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hearts</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+        /* Styling number inputs to remove spin buttons on mobile */
+        input[type="number"]::-webkit-inner-spin-button,
+        input[type="number"]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type="number"] {
+            -moz-appearance: textfield;
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen pb-10">
+
+    <div id="toast-container" class="fixed top-4 left-1/2 -translate-x-1/2 z-50 w-11/12 max-w-sm pointer-events-none transition-all duration-300 transform translate-y-[-100px] opacity-0">
+        <div class="bg-rose-600 text-white px-4 py-3 rounded-xl shadow-2xl flex items-center justify-between border border-rose-500">
+            <span id="toast-message" class="text-sm font-semibold"></span>
+            <button onclick="closeToast()" class="text-white hover:text-rose-200 ml-4 font-bold text-lg pointer-events-auto">&times;</button>
+        </div>
+    </div>
+
+    <!-- SETUP VIEW -->
+    <div id="setup-view" class="max-w-md mx-auto px-4 pt-8 space-y-6">
+        <div class="text-center">
+            <h1 class="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-rose-400 to-amber-300 bg-clip-text text-transparent">Hearts </h1>
+        </div>
+
+        <!-- CARD 1: ACTIVE PLAYERS -->
+        <div class="bg-slate-800/80 backdrop-blur-md rounded-3xl p-6 border border-slate-700/50 shadow-xl space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-700/40 pb-3 mb-2">
+                <label class="block text-sm font-bold text-slate-300 uppercase tracking-wider">Players at Table</label>
+                <button type="button" onclick="addPlayerSeat()" class="text-xs font-black text-emerald-400 hover:text-emerald-300 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 px-3 py-2 rounded-xl transition-all active:scale-95">
+                    ➕ Add Player Seat
+                </button>
+            </div>
+            
+            <div id="setup-names-container" class="space-y-3">
+                <!-- Dynamic dropdowns injected here by JavaScript -->
+            </div>
+        </div>
+
+        <!-- CARD 2: TOURNAMENT DETAILS (BROKEN OUT) -->
+        <div class="bg-slate-800/80 backdrop-blur-md rounded-3xl p-6 border border-slate-700/50 shadow-xl space-y-3">
+            <label class="block text-sm font-bold text-slate-300 uppercase tracking-wider">Game Name (Optional)</label>
+            <input type="text" id="setup-tournament" placeholder="e.g. Thanksgiving 2026" class="w-full bg-slate-900 border-2 border-slate-700/60 rounded-2xl px-5 py-4 text-lg text-slate-100 placeholder-slate-600 focus:outline-none focus:border-rose-500 transition-colors h-14">
+            <div class="flex flex-wrap gap-3 mt-3 text-sm text-slate-300">
+                <label class="inline-flex items-center gap-2 bg-slate-900/80 border border-slate-700/50 rounded-2xl px-4 py-3">
+                    <input type="checkbox" id="setup-cancellation-rules" class="w-4 h-4 text-rose-400 rounded focus:ring-rose-500" />
+                    Cancellation rules
+                </label>
+            </div>
+        </div>
+
+        <!-- ACTION INITIATION -->
+        <button onclick="startGame()" class="w-full bg-gradient-to-r from-rose-600 to-rose-500 hover:from-rose-500 hover:to-rose-400 text-white font-extrabold py-5 px-6 rounded-3xl shadow-lg shadow-rose-900/30 active:scale-[0.98] transition-all text-center text-xl tracking-wide">
+            🚀 Begin Game
+        </button>
+    </div>
+
+    <!-- ACTIVE GAME VIEW -->
+    <div id="game-view" class="hidden max-w-2xl mx-auto px-4 pt-4">
+        <!-- Dashboard Top Navigation Bar -->
+        <div class="flex items-center justify-between mb-4 bg-slate-800/40 p-3 rounded-2xl border border-slate-700/30">
+            <div class="flex items-center space-x-2">
+                <span id="badge-tournament" class="hidden px-2.5 py-1 rounded-md text-xs font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20"></span>
+                <span class="text-xs text-slate-400 font-semibold uppercase tracking-wider" id="game-id-display">Game ID:</span>
+            </div>
+            <div class="flex items-center space-x-1.5">
+                <button onclick="confirmEndGame()" class="text-xs font-semibold text-emerald-400 hover:text-emerald-300 px-3 py-1.5 rounded-lg hover:bg-emerald-500/10 transition-colors">End Game</button>
+                <button onclick="confirmExitGame()" class="text-xs font-semibold text-rose-400 hover:text-rose-300 px-3 py-1.5 rounded-lg hover:bg-rose-500/10 transition-colors">Abandon Game</button>
+            </div>
+        </div>
+
+        <div class="bg-slate-800/80 rounded-3xl p-4 border border-slate-700/50 shadow-xl mb-4">
+            <h2 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3 text-center">Scoreboard</h2>
+            <div id="scoreboard-header" class="grid gap-2">
+                <!-- Rendered dynamically depending on player count selection -->
+            </div>
+        </div>
+
+        <div class="bg-slate-800/80 rounded-3xl p-5 border border-slate-700/50 shadow-xl mb-4 relative" id="round-entry-card">
+            <div class="flex items-center justify-between mb-4 border-b border-slate-700/50 pb-3">
+                <h3 class="text-sm font-bold text-slate-200">Record Round <span id="display-round-num" class="text-rose-400">1</span> Scores</h3>
+                <span class="text-xs text-slate-400">Must equal exactly 26 points</span>
+            </div>
+
+            <!-- Inputs and Moons Dynamic Placement Area -->
+            <div id="round-inputs-container" class="space-y-4">
+                <!-- Injected elements by JS logic -->
+            </div>
+
+            <!-- Validation Status Block -->
+            <div class="mt-4 flex flex-col items-center justify-center pt-3 border-t border-slate-700/30">
+                <div id="val-badge" class="px-4 py-2 rounded-xl text-sm font-bold mb-3 flex items-center space-x-2 bg-amber-500/10 text-amber-400 border border-emerald-500/20">
+                    <span id="val-text">Remaining points: 26</span>
+                </div>
+                <button id="btn-advance" onclick="submitRound()" disabled class="w-full py-4 rounded-2xl bg-slate-700 text-slate-400 font-extrabold shadow-lg cursor-not-allowed transition-all duration-200">
+                    ✓ Save & Advance Round
+                </button>
+            </div>
+        </div>
+
+        <div class="bg-slate-800/80 rounded-3xl p-4 border border-slate-700/50 shadow-xl">
+            <div class="flex items-center justify-between mb-2">
+                <h4 class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Round History Logs</h4>
+                <button id="btn-undo" onclick="undoLastRound()" disabled class="text-xs font-bold text-slate-500 hover:text-rose-400 disabled:opacity-30 disabled:pointer-events-none transition-colors">
+                    ↩ Undo Last Round
+                </button>
+            </div>
+            <div class="bg-slate-900/60 rounded-2xl p-3 border border-slate-800 text-sm max-h-40 overflow-y-auto" id="history-logs-box">
+                <div class="text-slate-500 text-xs italic text-center py-2">No tricks logged for this match yet.</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- GAME OVER / RESULTS VIEW -->
+    <div id="gameover-view" class="hidden max-w-md mx-auto px-4 pt-12 text-center">
+        <div class="bg-slate-800/90 rounded-3xl p-8 border border-slate-700/50 shadow-2xl relative overflow-hidden">
+            <div class="absolute -top-10 -left-10 w-40 h-40 bg-rose-600/10 rounded-full blur-3xl"></div>
+            <div class="absolute -bottom-10 -right-10 w-40 h-40 bg-amber-500/10 rounded-full blur-3xl"></div>
+
+            <span class="text-6xl inline-block mb-4 animate-bounce">👑</span>
+            <h2 class="text-3xl font-black text-white tracking-tight">Game Completed!</h2>
+            <p class="text-sm text-slate-400 mt-1 mb-6">Final tallies uploaded successfully to Google Sheets</p>
+
+            <!-- Leaderboard Rankings List -->
+            <div class="bg-slate-900/80 border border-slate-700/30 rounded-2xl p-4 mb-8 divide-y divide-slate-800" id="final-leaderboard">
+                <!-- Sorted from 1st (lowest) to last (highest) scores -->
+            </div>
+
+            <button onclick="resetToSetup()" class="w-full bg-gradient-to-r from-rose-600 to-rose-500 hover:from-rose-500 hover:to-rose-400 text-white font-extrabold py-4 px-6 rounded-2xl shadow-lg transition-all active:scale-[0.98]">
+                Start Another Match
+            </button>
+        </div>
+    </div>
+
+    <!-- FIXED SLIM GLOWING CONNECTION BAR AT BOTTOM -->
+    <div id="status-bar" class="fixed bottom-0 left-0 right-0 h-[4px] bg-slate-800 transition-all duration-500 animate-pulse" title="Cloud Sync Status Indicator"></div>
+
+    <script>
+        // INSERT YOUR GOOGLE APPS SCRIPT WEB APP URL HERE
+        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzRq4Z0QFxmdDxHF1anMaEzAvSRB9gfD-UpUsn11BcIpqTPClEiMXXT4zsh_nLaGobE/exec";
+
+        // Fallback Default Players (used if fetch fails or URL not configured yet)
+        const fallbackPlayers = [
+            { id: "p_grandpa", name: "Grandpa 👑" },
+            { id: "p_dad", name: "Dad" },
+            { id: "p_sarah", name: "Sarah" },
+            { id: "p_alex", name: "Alex" },
+            { id: "p_uncle_bob", name: "Uncle Bob" },
+            { id: "p_aunt_mary", name: "Aunt Mary" }
+        ];
+
+        // Global States
+        let dbPlayers = []; // Filled dynamically from sheet on load
+        let activePlayerCount = 4; // Tracks dynamic count of active player slots
+        let selectedPlayerIds = []; // Stores IDs of chosen players at the table
+        let currentGameId = "";
+        let currentRoundNumber = 1;
+        let runningTotals = [];
+        let roundLogs = []; 
+        let currentTournament = "None";
+        let currentCancellationRules = false;
+
+        // Bootstrapping
+        window.addEventListener('DOMContentLoaded', async () => {
+            await fetchPlayersFromSheet();
+            renderPlayerSeats(); // Trigger initial seat generation
+        });
+
+        // Pull active directory from Sheets database
+        async function fetchPlayersFromSheet() {
+            const bar = document.getElementById('status-bar');
+            
+            if (!WEB_APP_URL || WEB_APP_URL.includes("YOUR_GOOGLE_APPS_SCRIPT_WEB_APP")) {
+                console.log("Using default fallback players. Replace WEB_APP_URL to sync live.");
+                dbPlayers = [...fallbackPlayers];
+                
+                // Set status bar to static amber indicator
+                bar.className = "fixed bottom-0 left-0 right-0 h-[4px] bg-amber-500 shadow-[0_-4px_10px_rgba(245,158,11,0.5)] transition-all duration-500";
+                bar.title = "Offline (using default fallback players)";
+                return;
+            }
+
+            try {
+                const response = await fetch(WEB_APP_URL);
+                const result = await response.json();
+                
+                if (result.status === "success" && result.players && result.players.length > 0) {
+                    dbPlayers = result.players;
+                    
+                    // Set status bar to glowing emerald indicator
+                    bar.className = "fixed bottom-0 left-0 right-0 h-[4px] bg-emerald-500 shadow-[0_-4px_10px_rgba(16,185,129,0.5)] transition-all duration-500";
+                    bar.title = "Live cloud database sync connected";
+                } else {
+                    throw new Error("Invalid format returned");
+                }
+            } catch (error) {
+                console.warn("Failed to query live Google Sheet database, falling back.", error);
+                dbPlayers = [...fallbackPlayers];
+                
+                // Set status bar to static amber indicator
+                bar.className = "fixed bottom-0 left-0 right-0 h-[4px] bg-amber-500 shadow-[0_-4px_10px_rgba(245,158,11,0.5)] transition-all duration-500";
+                bar.title = "Offline (failed to query live database, fallback active)";
+            }
+        }
+
+        // Dynamic seat configuration rendering with selection preservation
+// Updated function to include the "Add New Player" option
+function renderPlayerSeats() {
+    const container = document.getElementById('setup-names-container');
+    const savedSelections = [];
+    for (let i = 0; i < 8; i++) {
+        const el = document.getElementById(`setup-player-select-${i}`);
+        if (el) savedSelections.push(el.value);
+    }
+
+    container.innerHTML = '';
+    
+    for (let i = 0; i < activePlayerCount; i++) {
+        let selectedVal = savedSelections[i] || (dbPlayers[i] ? dbPlayers[i].id : (dbPlayers[0]?.id || ""));
+
+        let dropdownHtml = `
+            <div class="flex items-center space-x-3 bg-slate-900/40 p-2.5 rounded-2xl border-2 border-slate-800/80" id="seat-wrapper-${i}">
+                <span class="text-sm font-black text-slate-400 w-10 text-center bg-slate-800/80 py-2 rounded-xl border border-slate-700/20">P${i+1}</span>
+                <select id="setup-player-select-${i}" onchange="checkNewPlayer(this, ${i})" class="flex-1 bg-slate-900 border-2 border-slate-700/50 rounded-xl px-4 py-4 text-slate-100 focus:outline-none focus:border-rose-500 text-lg font-bold cursor-pointer h-14">`;
+        
+        dbPlayers.forEach((p) => {
+            const isSelected = (p.id === selectedVal) ? 'selected' : '';
+            dropdownHtml += `<option value="${p.id}" ${isSelected}>${p.name}</option>`;
+        });
+        
+        // Add the "+ Add New Player" option
+        dropdownHtml += `<option value="NEW_PLAYER" class="text-emerald-400 font-bold">+ Add New Player</option>`;
+        dropdownHtml += `</select>`;
+
+        if (activePlayerCount > 3) {
+            dropdownHtml += `
+                <button type="button" onclick="removePlayerSeat(${i})" class="p-3 text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 rounded-xl border-2 border-rose-500/10 hover:border-rose-500/30 transition-all flex items-center justify-center h-14 w-14">
+                    <span class="text-xl font-bold">✕</span>
+                </button>`;
+        }
+        dropdownHtml += `</div>`;
+        container.innerHTML += dropdownHtml;
+    }
+}
+
+// New function to handle adding a player
+async function checkNewPlayer(selectElement, seatIndex) {
+    if (selectElement.value === "NEW_PLAYER") {
+        const newName = prompt("Enter the new player's name:");
+        if (newName && newName.trim() !== "") {
+            const newId = "p_" + Date.now();
+            
+            // Send to your Google Apps Script
+            await fetch(WEB_APP_URL, {
+                method: "POST",
+                mode: "no-cors",
+                body: JSON.stringify({ action: "addPlayer", name: newName, id: newId })
+            });
+
+            // Update local state and refresh
+            dbPlayers.push({ id: newId, name: newName });
+            renderPlayerSeats();
+            document.getElementById(`setup-player-select-${seatIndex}`).value = newId;
+        } else {
+            // Revert to first player if user cancels
+            selectElement.value = dbPlayers[0].id;
+        }
+    }
+}
+
+        // Add a seat up to max 8
+        function addPlayerSeat() {
+            if (activePlayerCount >= 8) {
+                showToast("⚠️ Hearts supports up to 8 players max!");
+                return;
+            }
+            activePlayerCount++;
+            renderPlayerSeats();
+            showToast(`Added Seat P${activePlayerCount}`);
+        }
+
+        // Remove a seat down to min 3
+        function removePlayerSeat(index) {
+            if (activePlayerCount <= 3) {
+                showToast("⚠️ Minimum of 3 players required to play!");
+                return;
+            }
+            
+            // Get current select values and remove the target index to scale down correctly
+            const savedSelections = [];
+            for (let i = 0; i < activePlayerCount; i++) {
+                const el = document.getElementById(`setup-player-select-${i}`);
+                if (el && i !== index) {
+                    savedSelections.push(el.value);
+                }
+            }
+
+            activePlayerCount--;
+            
+            // Re-render
+            const container = document.getElementById('setup-names-container');
+            container.innerHTML = '';
+            
+            for (let i = 0; i < activePlayerCount; i++) {
+                const selectedVal = savedSelections[i] || (dbPlayers[i] ? dbPlayers[i].id : "");
+                
+                let dropdownHtml = `
+                    <div class="flex items-center space-x-3 bg-slate-900/40 p-2.5 rounded-2xl border-2 border-slate-800/80" id="seat-wrapper-${i}">
+                        <span class="text-sm font-black text-slate-400 w-10 text-center bg-slate-800/80 py-2 rounded-xl border border-slate-700/20">P${i+1}</span>
+                        <select id="setup-player-select-${i}" class="flex-1 bg-slate-900 border-2 border-slate-700/50 rounded-xl px-4 py-4 text-slate-100 focus:outline-none focus:border-rose-500 text-lg font-bold cursor-pointer h-14">`;
+                
+                dbPlayers.forEach((p) => {
+                    const isSelected = (p.id === selectedVal) ? 'selected' : '';
+                    dropdownHtml += `<option value="${p.id}" ${isSelected}>${p.name}</option>`;
+                });
+                
+                dropdownHtml += `</select>`;
+
+                if (activePlayerCount > 3) {
+                    dropdownHtml += `
+                        <button type="button" onclick="removePlayerSeat(${i})" class="p-3 text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 rounded-xl border-2 border-rose-500/10 hover:border-rose-500/30 transition-all flex items-center justify-center h-14 w-14" title="Remove Player Seat">
+                            <span class="text-xl font-bold">✕</span>
+                        </button>`;
+                }
+
+                dropdownHtml += `</div>`;
+                container.innerHTML += dropdownHtml;
+            }
+
+            showToast(`Removed Seat`);
+        }
+
+        function showToast(message) {
+            const container = document.getElementById('toast-container');
+            const msgEl = document.getElementById('toast-message');
+            msgEl.textContent = message;
+            
+            container.classList.remove('translate-y-[-100px]', 'opacity-0');
+            container.classList.add('translate-y-0', 'opacity-100');
+
+            setTimeout(closeToast, 4000);
+        }
+
+        function closeToast() {
+            const container = document.getElementById('toast-container');
+            container.classList.remove('translate-y-0', 'opacity-100');
+            container.classList.add('translate-y-[-100px]', 'opacity-0');
+        }
+
+        // Resolve selected IDs, verify unique seats, then begin match
+        function startGame() {
+            selectedPlayerIds = [];
+            
+            for (let i = 0; i < activePlayerCount; i++) {
+                const pSelect = document.getElementById(`setup-player-select-${i}`);
+                if (pSelect) {
+                    selectedPlayerIds.push(pSelect.value);
+                }
+            }
+
+            // Validation: Ensure no duplicate players are selected
+            const uniqueCheck = new Set(selectedPlayerIds);
+            if (uniqueCheck.size !== selectedPlayerIds.length) {
+                showToast("⚠️ Each seat must have a unique family player!");
+                return;
+            }
+
+            currentGameId = "g_" + Date.now();
+            currentRoundNumber = 1;
+            roundLogs = [];
+            currentTournament = document.getElementById('setup-tournament').value.trim() || "None";
+            currentCancellationRules = document.getElementById('setup-cancellation-rules').checked;
+            runningTotals = Array(activePlayerCount).fill(0);
+
+            // Transition UI views
+            document.getElementById('setup-view').classList.add('hidden');
+            document.getElementById('game-view').classList.remove('hidden');
+
+            document.getElementById('game-id-display').textContent = `Game ID: ${currentGameId.substring(2, 10)}`;
+            const badge = document.getElementById('badge-tournament');
+            if (currentTournament !== "None") {
+                badge.textContent = currentTournament;
+                badge.classList.remove('hidden');
+            } else {
+                badge.classList.add('hidden');
+            }
+
+            buildScoreboardHeaders();
+            buildRoundInputFields();
+            updateHistoryUI();
+        }
+
+        // Maps player ID to Display Name
+        function getPlayerDisplayName(pId) {
+            const p = dbPlayers.find(x => x.id === pId);
+            return p ? p.name : pId;
+        }
+
+        function buildScoreboardHeaders() {
+            const header = document.getElementById('scoreboard-header');
+            header.style.gridTemplateColumns = `repeat(${activePlayerCount}, minmax(0, 1fr))`;
+            header.innerHTML = '';
+
+            for (let i = 0; i < activePlayerCount; i++) {
+                const displayName = getPlayerDisplayName(selectedPlayerIds[i]);
+                header.innerHTML += `
+                    <div class="bg-slate-900/40 border border-slate-700/20 rounded-2xl p-2 flex flex-col items-center">
+                        <span class="text-xs text-slate-400 font-bold truncate max-w-full block" title="${displayName}">${displayName}</span>
+                        <span id="run-tot-${i}" class="text-xl font-black text-rose-500 mt-1">0</span>
+                    </div>`;
+            }
+        }
+
+        function buildRoundInputFields() {
+            document.getElementById('display-round-num').textContent = currentRoundNumber;
+            const inputsContainer = document.getElementById('round-inputs-container');
+            inputsContainer.innerHTML = '';
+
+            for (let i = 0; i < activePlayerCount; i++) {
+                const displayName = getPlayerDisplayName(selectedPlayerIds[i]);
+                inputsContainer.innerHTML += `
+                    <div class="flex items-center justify-between space-x-3 bg-slate-900/40 p-3 rounded-2xl border border-slate-800">
+                        <div class="flex-1 min-w-0">
+                            <span class="block text-sm font-bold text-slate-300 truncate">${displayName}</span>
+                            <span class="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">Trick score</span>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <button onclick="triggerShootMoon(${i})" class="bg-slate-800 border border-slate-700 text-[10px] uppercase font-bold py-2.5 px-3 rounded-xl hover:bg-slate-700 text-amber-400 active:scale-[0.95] transition-all">
+                                🌙 Moon
+                            </button>
+                            <input type="number" pattern="[0-9]*" inputmode="numeric" id="round-score-p${i}" placeholder="0" oninput="runScoreValidation()" 
+                                class="w-16 bg-slate-800 border border-slate-700 text-center py-2 px-1 text-lg font-black text-white rounded-xl focus:outline-none focus:border-rose-500 focus:bg-slate-700/50">
+                        </div>
+                    </div>`;
+            }
+            runScoreValidation();
+        }
+
+        function runScoreValidation() {
+            let total = 0;
+            for (let i = 0; i < activePlayerCount; i++) {
+                total += parseInt(document.getElementById(`round-score-p${i}`).value) || 0;
+            }
+
+            const remaining = 26 - total;
+            const badge = document.getElementById('val-badge');
+            const text = document.getElementById('val-text');
+            const btn = document.getElementById('btn-advance');
+
+            if (remaining === 0) {
+                badge.className = "px-4 py-2 rounded-xl text-sm font-bold mb-3 flex items-center space-x-2 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
+                text.innerHTML = `✓ Hand Validated (26/26)`;
+                btn.disabled = false;
+                btn.className = "w-full py-4 rounded-2xl bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white font-extrabold shadow-lg shadow-emerald-900/20 active:scale-[0.98] cursor-pointer transition-all duration-200";
+            } else {
+                badge.className = "px-4 py-2 rounded-xl text-sm font-bold mb-3 flex items-center space-x-2 bg-amber-500/10 text-amber-400 border border-amber-500/20";
+                if (remaining > 0) {
+                    text.innerHTML = `Remaining points: <span class="font-extrabold text-white ml-1">${remaining}</span>`;
+                } else {
+                    text.innerHTML = `Over budget by: <span class="font-extrabold text-rose-400 ml-1">${Math.abs(remaining)}</span>`;
+                }
+                btn.disabled = true;
+                btn.className = "w-full py-4 rounded-2xl bg-slate-700 text-slate-500 font-extrabold shadow-lg cursor-not-allowed transition-all duration-200";
+            }
+        }
+
+        function triggerShootMoon(shooterIdx) {
+            for (let i = 0; i < activePlayerCount; i++) {
+                const el = document.getElementById(`round-score-p${i}`);
+                if (i === shooterIdx) {
+                    el.value = 0;
+                } else {
+                    el.value = 26;
+                }
+            }
+            runScoreValidation();
+            showToast(`${getPlayerDisplayName(selectedPlayerIds[shooterIdx])} shot the Moon! 🌙`);
+        }
+
+        function submitRound() {
+            const scores = [];
+            for (let i = 0; i < activePlayerCount; i++) {
+                scores.push(parseInt(document.getElementById(`round-score-p${i}`).value) || 0);
+            }
+
+            roundLogs.push(scores);
+
+            // Send database scores using persistent Player_IDs
+            shipRoundToCloud(scores, currentRoundNumber);
+
+            for (let i = 0; i < activePlayerCount; i++) {
+                runningTotals[i] += scores[i];
+                document.getElementById(`run-tot-${i}`).textContent = runningTotals[i];
+            }
+
+            updateHistoryUI();
+
+            const maxScore = Math.max(...runningTotals);
+            if (maxScore >= 100) {
+                endActiveGame();
+            } else {
+                currentRoundNumber++;
+                buildRoundInputFields();
+                showToast(`Saved Round ${currentRoundNumber - 1}`);
+            }
+        }
+
+        async function shipRoundToCloud(scores, roundNum) {
+            if (WEB_APP_URL === "YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL_HERE") {
+                console.log("No cloud hook URL defined. Logging offline-only.");
+                return;
+            }
+
+            const payloadRows = [];
+            for (let i = 0; i < activePlayerCount; i++) {
+                payloadRows.push({
+                    Game_ID: currentGameId,
+                    Round_Number: roundNum,
+                    Timestamp: new Date().toISOString(),
+                    PlayerID: selectedPlayerIds[i],
+                    Tournament_Play: currentTournament,
+                    Cancellation_Rules: currentCancellationRules,
+                    Trick_Score: scores[i]
+                });
+            }
+
+            try {
+                await fetch(WEB_APP_URL, {
+                    method: "POST",
+                    mode: "no-cors",
+                    body: JSON.stringify({ rows: payloadRows })
+                });
+            } catch (error) {
+                showToast("⚠️ Cloud sync failed. Check Apps Script deployment settings.");
+                console.error("Cloud sync error:", error);
+            }
+        }
+
+        function undoLastRound() {
+            if (roundLogs.length === 0) return;
+
+            const poppedScores = roundLogs.pop();
+            
+            for (let i = 0; i < activePlayerCount; i++) {
+                runningTotals[i] -= poppedScores[i];
+                document.getElementById(`run-tot-${i}`).textContent = runningTotals[i];
+            }
+
+            currentRoundNumber--;
+            buildRoundInputFields();
+            updateHistoryUI();
+            
+            showToast(`Rolled back Round ${currentRoundNumber}!`);
+        }
+
+        function updateHistoryUI() {
+            const container = document.getElementById('history-logs-box');
+            const undoBtn = document.getElementById('btn-undo');
+
+            if (roundLogs.length === 0) {
+                container.innerHTML = `<div class="text-slate-500 text-xs italic text-center py-2">No tricks logged for this match yet.</div>`;
+                undoBtn.disabled = true;
+                return;
+            }
+
+            undoBtn.disabled = false;
+            container.innerHTML = '';
+            
+            for (let r = roundLogs.length - 1; r >= 0; r--) {
+                const logs = roundLogs[r];
+                let roundResultMarkup = '';
+                for (let i = 0; i < activePlayerCount; i++) {
+                    const shortName = getPlayerDisplayName(selectedPlayerIds[i]).substring(0, 4);
+                    roundResultMarkup += `<span class="bg-slate-800 px-2 py-1 rounded text-xs font-semibold text-slate-300">${shortName}: ${logs[i]}</span>`;
+                }
+                
+                container.innerHTML += `
+                    <div class="flex items-center justify-between py-1.5 border-b border-slate-800/80 last:border-0">
+                        <span class="text-xs font-extrabold text-rose-400">R${r+1}</span>
+                        <div class="flex space-x-1.5">${roundResultMarkup}</div>
+                    </div>`;
+            }
+        }
+
+        function confirmExitGame() {
+            const confirmBox = document.createElement('div');
+            confirmBox.id = 'custom-confirm-modal';
+            confirmBox.className = "fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4";
+            confirmBox.innerHTML = `
+                <div class="bg-slate-800 border border-slate-700/50 p-6 rounded-3xl w-full max-w-sm text-center shadow-2xl">
+                    <span class="text-4xl block mb-3">⚠️</span>
+                    <h3 class="text-lg font-bold text-white mb-2">Abandon Game?</h3>
+                    <p class="text-slate-400 text-sm mb-6">Current active round history scores will not be finalized.</p>
+                    <div class="flex space-x-3">
+                        <button onclick="document.getElementById('custom-confirm-modal').remove()" class="flex-1 bg-slate-700 text-slate-300 py-3 rounded-xl font-bold hover:bg-slate-600 transition-colors">Resume</button>
+                        <button onclick="resetToSetup(); document.getElementById('custom-confirm-modal').remove()" class="flex-1 bg-rose-600 text-white py-3 rounded-xl font-bold hover:bg-rose-500 transition-colors">Abandon</button>
+                    </div>
+                </div>`;
+            document.body.appendChild(confirmBox);
+        }
+
+        function confirmEndGame() {
+            // Guard to make sure at least one round has been recorded to make ending meaningful
+            if (roundLogs.length === 0) {
+                showToast("⚠️ Play at least one round before ending the game!");
+                return;
+            }
+            
+            const confirmBox = document.createElement('div');
+            confirmBox.id = 'custom-end-modal';
+            confirmBox.className = "fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4";
+            confirmBox.innerHTML = `
+                <div class="bg-slate-800 border border-slate-700/50 p-6 rounded-3xl w-full max-w-sm text-center shadow-2xl">
+                    <span class="text-4xl block mb-3">🏁</span>
+                    <h3 class="text-lg font-bold text-white mb-2">End Game Early?</h3>
+                    <p class="text-slate-400 text-sm mb-6">This will end the match immediately and save the current scoreboard rankings.</p>
+                    <div class="flex space-x-3">
+                        <button onclick="document.getElementById('custom-end-modal').remove()" class="flex-1 bg-slate-700 text-slate-300 py-3 rounded-xl font-bold hover:bg-slate-600 transition-colors">Keep Playing</button>
+                        <button onclick="endActiveGame(); document.getElementById('custom-end-modal').remove()" class="flex-1 bg-emerald-600 text-white py-3 rounded-xl font-bold hover:bg-emerald-500 transition-colors">End Game</button>
+                    </div>
+                </div>`;
+            document.body.appendChild(confirmBox);
+        }
+
+        function endActiveGame() {
+            document.getElementById('game-view').classList.add('hidden');
+            document.getElementById('gameover-view').classList.remove('hidden');
+
+            const board = document.getElementById('final-leaderboard');
+            board.innerHTML = '';
+
+            const finalRanks = selectedPlayerIds.map((pId, idx) => ({
+                name: getPlayerDisplayName(pId),
+                score: runningTotals[idx]
+            }));
+
+            finalRanks.sort((a, b) => a.score - b.score);
+
+            finalRanks.forEach((player, index) => {
+                let badge = `${index + 1}th`;
+                let badgeClass = "bg-slate-800 text-slate-400";
+                
+                if (index === 0) {
+                    badge = "🏆 1st";
+                    badgeClass = "bg-amber-500/20 text-amber-400 border border-amber-500/30";
+                } else if (index === 1) {
+                    badge = "🥈 2nd";
+                    badgeClass = "bg-slate-300/15 text-slate-300 border border-slate-300/20";
+                } else if (index === 2) {
+                    badge = "🥉 3rd";
+                    badgeClass = "bg-orange-500/10 text-orange-400 border border-orange-500/20";
+                }
+
+                board.innerHTML += `
+                    <div class="flex items-center justify-between py-4">
+                        <div class="flex items-center space-x-3">
+                            <span class="px-2.5 py-1 rounded-lg text-xs font-bold ${badgeClass}">${badge}</span>
+                            <span class="font-bold text-white">${player.name}</span>
+                        </div>
+                        <span class="text-xl font-black text-rose-500">${player.score} pts</span>
+                    </div>`;
+            });
+        }
+
+        // Cleaned up helper to refresh/return state
+        function resetToSetup() {
+            document.getElementById('gameover-view').classList.add('hidden');
+            document.getElementById('game-view').classList.add('hidden');
+            document.getElementById('setup-view').classList.remove('hidden');
+        }
+    </script>
+</body>
+</html>
