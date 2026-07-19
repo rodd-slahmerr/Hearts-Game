@@ -33,8 +33,11 @@
 
     <!-- SETUP VIEW -->
     <div id="setup-view" class="max-w-md mx-auto px-4 pt-8 space-y-6">
-        <div class="text-center">
+        <div class="relative text-center">
             <h1 class="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-rose-400 to-amber-300 bg-clip-text text-transparent">Hearts </h1>
+            <button onclick="openStatsView()" class="absolute right-0 top-1 text-xs font-bold text-slate-300 hover:text-amber-300 bg-slate-800/80 hover:bg-slate-800 border border-slate-700/50 px-3 py-2 rounded-xl transition-all active:scale-95">
+                📊 Stats
+            </button>
         </div>
 
         <!-- CARD 1: ACTIVE PLAYERS -->
@@ -142,6 +145,44 @@
             <button onclick="resetToSetup()" class="w-full bg-gradient-to-r from-rose-600 to-rose-500 hover:from-rose-500 hover:to-rose-400 text-white font-extrabold py-4 px-6 rounded-2xl shadow-lg transition-all active:scale-[0.98]">
                 Start Another Match
             </button>
+        </div>
+    </div>
+
+    <!-- STATS & RECORDS VIEW -->
+    <div id="stats-view" class="hidden max-w-md mx-auto px-4 pt-8 pb-16 space-y-6">
+        <div class="flex items-center space-x-3">
+            <button onclick="closeStatsView()" class="text-slate-300 hover:text-white bg-slate-800/80 hover:bg-slate-800 border border-slate-700/50 px-3 py-2 rounded-xl transition-all active:scale-95">
+                ← Back
+            </button>
+            <h1 class="text-2xl font-extrabold tracking-tight bg-gradient-to-r from-rose-400 to-amber-300 bg-clip-text text-transparent">Stats &amp; Records</h1>
+        </div>
+
+        <div id="stats-loading" class="text-center text-slate-400 text-sm py-10">Loading history…</div>
+        <div id="stats-error" class="hidden text-center text-rose-400 text-sm py-10"></div>
+
+        <div id="stats-content" class="hidden space-y-6">
+            <!-- Best game ever -->
+            <div class="bg-slate-800/80 backdrop-blur-md rounded-3xl p-6 border border-slate-700/50 shadow-xl text-center" id="stats-best-game">
+            </div>
+
+            <!-- Total games played -->
+            <div class="text-center text-sm text-slate-400">
+                <span id="stats-total-games" class="font-black text-white text-lg">0</span> games played all-time
+            </div>
+
+            <!-- Leaderboard -->
+            <div class="bg-slate-800/80 backdrop-blur-md rounded-3xl p-6 border border-slate-700/50 shadow-xl">
+                <label class="block text-sm font-bold text-slate-300 uppercase tracking-wider border-b border-slate-700/40 pb-3 mb-2">Leaderboard</label>
+                <div id="stats-leaderboard" class="divide-y divide-slate-800">
+                </div>
+            </div>
+
+            <!-- Recent games -->
+            <div class="bg-slate-800/80 backdrop-blur-md rounded-3xl p-6 border border-slate-700/50 shadow-xl">
+                <label class="block text-sm font-bold text-slate-300 uppercase tracking-wider border-b border-slate-700/40 pb-3 mb-2">Recent Games</label>
+                <div id="stats-recent-games" class="divide-y divide-slate-800">
+                </div>
+            </div>
         </div>
     </div>
 
@@ -680,6 +721,107 @@ async function checkNewPlayer(selectElement, seatIndex) {
             document.getElementById('gameover-view').classList.add('hidden');
             document.getElementById('game-view').classList.add('hidden');
             document.getElementById('setup-view').classList.remove('hidden');
+        }
+
+        // ── Stats & Records screen ──────────────────────────────────────
+        async function openStatsView() {
+            document.getElementById('setup-view').classList.add('hidden');
+            document.getElementById('stats-view').classList.remove('hidden');
+            await fetchStats();
+        }
+
+        function closeStatsView() {
+            document.getElementById('stats-view').classList.add('hidden');
+            document.getElementById('setup-view').classList.remove('hidden');
+        }
+
+        async function fetchStats() {
+            const loadingEl = document.getElementById('stats-loading');
+            const contentEl = document.getElementById('stats-content');
+            const errorEl = document.getElementById('stats-error');
+
+            loadingEl.classList.remove('hidden');
+            contentEl.classList.add('hidden');
+            errorEl.classList.add('hidden');
+
+            if (!WEB_APP_URL || WEB_APP_URL.includes("YOUR_GOOGLE_APPS_SCRIPT_WEB_APP")) {
+                loadingEl.classList.add('hidden');
+                errorEl.textContent = "Stats aren't available offline — connect the cloud database first.";
+                errorEl.classList.remove('hidden');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${WEB_APP_URL}?action=getStats`);
+                const result = await response.json();
+                if (result.status !== "success") throw new Error("Bad response");
+
+                renderStats(result);
+                loadingEl.classList.add('hidden');
+                contentEl.classList.remove('hidden');
+            } catch (error) {
+                console.error("Failed to load stats", error);
+                loadingEl.classList.add('hidden');
+                errorEl.textContent = "Failed to load stats. Check your connection and Apps Script deployment.";
+                errorEl.classList.remove('hidden');
+            }
+        }
+
+        function renderStats(result) {
+            document.getElementById('stats-total-games').textContent = result.totalGames;
+
+            const bestGameEl = document.getElementById('stats-best-game');
+            if (result.bestGameEver) {
+                const bg = result.bestGameEver;
+                bestGameEl.innerHTML = `
+                    <span class="text-4xl inline-block mb-2">🏆</span>
+                    <div class="text-xs font-bold text-slate-400 uppercase tracking-wider">Best Game Ever</div>
+                    <div class="text-2xl font-black text-amber-400 mt-1">${bg.playerName}</div>
+                    <div class="text-sm text-slate-400 mt-1">${bg.score} pts &middot; ${new Date(bg.timestamp).toLocaleDateString()}</div>`;
+            } else {
+                bestGameEl.innerHTML = `<div class="text-sm text-slate-500 italic">No completed games yet.</div>`;
+            }
+
+            const leaderboardEl = document.getElementById('stats-leaderboard');
+            leaderboardEl.innerHTML = '';
+            if (!result.leaderboard || result.leaderboard.length === 0) {
+                leaderboardEl.innerHTML = `<div class="text-sm text-slate-500 italic text-center py-4">No games recorded yet.</div>`;
+            } else {
+                result.leaderboard.forEach((p, idx) => {
+                    const badgeClass = idx === 0 ? "bg-amber-500/20 text-amber-400" : "bg-slate-800 text-slate-400";
+                    leaderboardEl.innerHTML += `
+                        <div class="flex items-center justify-between py-3">
+                            <div class="flex items-center space-x-3">
+                                <span class="w-7 h-7 flex items-center justify-center rounded-lg text-xs font-bold ${badgeClass}">${idx + 1}</span>
+                                <div>
+                                    <div class="font-bold text-white">${p.name}</div>
+                                    <div class="text-xs text-slate-500">${p.gamesPlayed} games &middot; best ${p.bestScore}</div>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <div class="font-black text-emerald-400">${p.wins} wins</div>
+                                <div class="text-xs text-slate-500">${Math.round(p.winRate * 100)}% win rate</div>
+                            </div>
+                        </div>`;
+                });
+            }
+
+            const recentEl = document.getElementById('stats-recent-games');
+            recentEl.innerHTML = '';
+            if (!result.recentGames || result.recentGames.length === 0) {
+                recentEl.innerHTML = `<div class="text-sm text-slate-500 italic text-center py-4">No games recorded yet.</div>`;
+            } else {
+                result.recentGames.forEach((g) => {
+                    recentEl.innerHTML += `
+                        <div class="flex items-center justify-between py-2.5">
+                            <div>
+                                <div class="text-sm font-bold text-white">${g.winnerName}</div>
+                                <div class="text-xs text-slate-500">${new Date(g.timestamp).toLocaleDateString()}</div>
+                            </div>
+                            <span class="text-sm font-bold text-rose-400">${g.winnerScore} pts</span>
+                        </div>`;
+                });
+            }
         }
     </script>
 </body>
