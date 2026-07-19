@@ -7,7 +7,7 @@
 
     <!-- PWA: installable home-screen app -->
     <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#0f172a">
+    <meta name="theme-color" id="meta-theme-color" content="#FBF9F3">
     <link rel="icon" href="icons/favicon-32.png" sizes="32x32" type="image/png">
     <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -17,10 +17,58 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
-        body {
-            font-family: 'Inter', sans-serif;
-            -webkit-tap-highlight-color: transparent;
+        :root, [data-theme="light"] {
+            --bg:#FBF9F3; --surface:#FFFFFF; --surface-2:#F1EFE4; --surface-hover:#E9E5D6;
+            --ink:#21301F; --muted:#5C6B57; --border:#E4DFCF;
+            --accent:#2F5233; --accent-soft:rgba(47,82,51,0.10); --accent-soft-2:rgba(47,82,51,0.24);
+            --accent2:#7A5230; --accent2-soft:rgba(122,82,48,0.12); --accent2-soft-2:rgba(122,82,48,0.26);
+            --success:#3F7A4C; --success-soft:rgba(63,122,76,0.12); --success-soft-2:rgba(63,122,76,0.26);
+            --bronze:#8C5A2B; --silver-soft:rgba(90,84,68,0.14);
+            --on-accent:#FBF9F3; --on-accent2:#FBF9F3; --on-success:#FBF9F3;
+            --font-display:'Gill Sans MT','Gill Sans','Century Gothic','Futura',sans-serif;
+            --font-body:'Segoe UI','Seravek','Helvetica Neue',Arial,sans-serif;
+            --radius-lg:20px; --radius-md:14px; --radius-sm:10px;
+            --word-tracking:0em; --word-case:none;
         }
+
+        [data-theme="dark"] {
+            --bg:#17130F; --surface:#231C15; --surface-2:#2B2118; --surface-hover:#332619;
+            --ink:#EDE3D3; --muted:#B3A78D; --border:#3A2E20;
+            --accent:#C98A2B; --accent-soft:rgba(201,138,43,0.14); --accent-soft-2:rgba(201,138,43,0.30);
+            --accent2:#7A2430; --accent2-soft:rgba(122,36,48,0.16); --accent2-soft-2:rgba(122,36,48,0.32);
+            --success:#4F8B5B; --success-soft:rgba(79,139,91,0.14); --success-soft-2:rgba(79,139,91,0.30);
+            --bronze:#B06B34; --silver-soft:rgba(156,149,132,0.18);
+            --on-accent:#17130F; --on-accent2:#EDE3D3; --on-success:#0E1710;
+            --font-display:Georgia,'Iowan Old Style',serif;
+            --font-body:'Segoe UI','Seravek','Helvetica Neue',Arial,sans-serif;
+            --radius-lg:18px; --radius-md:13px; --radius-sm:9px;
+            --word-tracking:0em; --word-case:none;
+        }
+
+        [data-theme="ranch"] {
+            --bg:#141110; --surface:#201A18; --surface-2:#281F1C; --surface-hover:#332721;
+            --ink:#EDE3D3; --muted:#A99F92; --border:#3A312C;
+            --accent:#8C1D18; --accent-soft:rgba(140,29,24,0.16); --accent-soft-2:rgba(140,29,24,0.32);
+            --accent2:#6B6560; --accent2-soft:rgba(107,101,96,0.18); --accent2-soft-2:rgba(107,101,96,0.34);
+            --success:#5C7A52; --success-soft:rgba(92,122,82,0.16); --success-soft-2:rgba(92,122,82,0.32);
+            --bronze:#8C5A2B; --silver-soft:rgba(143,135,124,0.20);
+            --on-accent:#EDE3D3; --on-accent2:#EDE3D3; --on-success:#141110;
+            --font-display:Rockwell,'Roboto Slab',Georgia,serif;
+            --font-body:'Segoe UI','Seravek','Helvetica Neue',Arial,sans-serif;
+            --radius-lg:8px; --radius-md:6px; --radius-sm:5px;
+            --word-tracking:0.03em; --word-case:uppercase;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--ink);
+            font-family: var(--font-body);
+            -webkit-tap-highlight-color: transparent;
+            transition: background-color 0.25s ease, color 0.25s ease;
+        }
+
+        .font-display { font-family: var(--font-display); }
+
         /* Styling number inputs to remove spin buttons on mobile */
         input[type="number"]::-webkit-inner-spin-button,
         input[type="number"]::-webkit-outer-spin-button {
@@ -30,23 +78,114 @@
         input[type="number"] {
             -moz-appearance: textfield;
         }
+
+        /* Radius tokens override Tailwind's fixed rounding per theme */
+        html .rounded-3xl { border-radius: var(--radius-lg); }
+        html .rounded-2xl { border-radius: var(--radius-md); }
+        html .rounded-xl  { border-radius: var(--radius-sm); }
+
+        /* ---- Themed color overrides, mapped from the original hardcoded Tailwind palette ---- */
+        html .bg-slate-900 { background-color: var(--bg); }
+        html .text-slate-100,
+        html .text-white,
+        html .text-slate-200 { color: var(--ink); }
+        html .text-slate-300,
+        html .text-slate-400,
+        html .text-slate-500 { color: var(--muted); }
+        html .placeholder-slate-600::placeholder { color: var(--muted); }
+
+        html .bg-slate-800\/80,
+        html .bg-slate-800\/90,
+        html .bg-slate-800\/40,
+        html .bg-slate-800 { background-color: var(--surface); }
+
+        html .bg-slate-900\/40,
+        html .bg-slate-900\/60,
+        html .bg-slate-900\/80,
+        html .bg-slate-700 { background-color: var(--surface-2); }
+
+        html .hover\:bg-slate-600:hover,
+        html .bg-slate-700\/50 { background-color: var(--surface-hover); }
+
+        html .border-slate-700\/50,
+        html .border-slate-700\/40,
+        html .border-slate-700\/30,
+        html .border-slate-700\/20,
+        html .border-slate-700\/60,
+        html .border-slate-700,
+        html .border-slate-800,
+        html .border-slate-800\/80 { border-color: var(--border); }
+        html .divide-slate-800 > :not([hidden]) ~ :not([hidden]) { border-color: var(--border); }
+
+        html .bg-slate-950\/80 { background-color: rgba(0,0,0,0.6); }
+
+        html .text-rose-400,
+        html .text-rose-500,
+        html .hover\:text-rose-300:hover,
+        html .hover\:text-rose-400:hover,
+        html .text-rose-200,
+        html .hover\:text-rose-200:hover { color: var(--accent); }
+        html .border-rose-500,
+        html .focus\:border-rose-500:focus { border-color: var(--accent); }
+        html .bg-rose-600\/10,
+        html .bg-rose-500\/10,
+        html .hover\:bg-rose-500\/10:hover { background-color: var(--accent-soft); }
+        html .border-rose-500\/10 { border-color: var(--accent-soft); }
+        html .hover\:border-rose-500\/30:hover { border-color: var(--accent-soft-2); }
+        html .focus\:ring-rose-500:focus { --tw-ring-color: var(--accent); }
+
+        html .text-amber-400,
+        html .text-amber-300 { color: var(--accent2); }
+        html .bg-amber-500\/10 { background-color: var(--accent2-soft); }
+        html .bg-amber-500\/20 { background-color: var(--accent2-soft-2); }
+        html .bg-amber-500 { background-color: var(--accent2); }
+        html .border-amber-500\/20 { border-color: var(--accent2-soft); }
+        html .border-amber-500\/30 { border-color: var(--accent2-soft-2); }
+
+        html .text-emerald-400,
+        html .hover\:text-emerald-300:hover { color: var(--success); }
+        html .bg-emerald-500\/10 { background-color: var(--success-soft); }
+        html .hover\:bg-emerald-500\/20:hover { background-color: var(--success-soft-2); }
+        html .border-emerald-500\/30,
+        html .border-emerald-500\/20 { border-color: var(--success-soft-2); }
+        html .bg-emerald-500 { background-color: var(--success); }
+
+        html .text-orange-400 { color: var(--bronze); }
+        html .bg-orange-500\/10,
+        html .bg-slate-300\/15 { background-color: var(--silver-soft); }
+        html .border-orange-500\/20,
+        html .border-slate-300\/20 { border-color: var(--silver-soft); }
     </style>
+    <script>
+        // Apply saved theme before first paint to avoid a flash of the default theme
+        (function () {
+            try {
+                var saved = localStorage.getItem('hearts_theme_v1');
+                if (saved === 'dark' || saved === 'ranch') {
+                    document.documentElement.setAttribute('data-theme', saved);
+                }
+            } catch (err) { /* localStorage unavailable, fall back to default light */ }
+        })();
+    </script>
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen pb-10">
 
     <div id="toast-container" class="fixed top-4 left-1/2 -translate-x-1/2 z-50 w-11/12 max-w-sm pointer-events-none transition-all duration-300 transform translate-y-[-100px] opacity-0">
-        <div class="bg-rose-600 text-white px-4 py-3 rounded-xl shadow-2xl flex items-center justify-between border border-rose-500">
+        <div class="bg-[var(--accent)] text-[var(--on-accent)] px-4 py-3 rounded-xl shadow-2xl flex items-center justify-between border border-[var(--accent)]">
             <span id="toast-message" class="text-sm font-semibold"></span>
-            <button onclick="closeToast()" class="text-white hover:text-rose-200 ml-4 font-bold text-lg pointer-events-auto">&times;</button>
+            <button onclick="closeToast()" class="text-[var(--on-accent)] hover:opacity-70 ml-4 font-bold text-lg pointer-events-auto">&times;</button>
         </div>
     </div>
 
     <!-- SETUP VIEW -->
     <div id="setup-view" class="max-w-md mx-auto px-4 pt-8 space-y-6">
         <div class="relative text-center">
-            <h1 class="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-rose-400 to-amber-300 bg-clip-text text-transparent">Hearts </h1>
+            <h1 class="font-display text-3xl font-extrabold tracking-tight text-[var(--accent)]" style="letter-spacing: var(--word-tracking); text-transform: var(--word-case);">Hearts</h1>
             <button onclick="openStatsView()" class="absolute right-0 top-1 text-xs font-bold text-slate-300 hover:text-amber-300 bg-slate-800/80 hover:bg-slate-800 border border-slate-700/50 px-3 py-2 rounded-xl transition-all active:scale-95">
                 📊 Stats
+            </button>
+            <button onclick="openThemePicker()" class="absolute left-0 top-1 text-xs font-bold text-slate-300 hover:text-amber-300 bg-slate-800/80 hover:bg-slate-800 border border-slate-700/50 px-3 py-2 rounded-xl transition-all active:scale-95">
+                🎨 Theme
             </button>
         </div>
 
@@ -77,7 +216,7 @@
         </div>
 
         <!-- ACTION INITIATION -->
-        <button onclick="startGame()" class="w-full bg-gradient-to-r from-rose-600 to-rose-500 hover:from-rose-500 hover:to-rose-400 text-white font-extrabold py-5 px-6 rounded-3xl shadow-lg shadow-rose-900/30 active:scale-[0.98] transition-all text-center text-xl tracking-wide">
+        <button onclick="startGame()" class="w-full bg-[var(--accent)] hover:opacity-90 text-[var(--on-accent)] font-extrabold py-5 px-6 rounded-3xl shadow-lg active:scale-[0.98] transition-all text-center text-xl tracking-wide">
             🚀 Begin Game
         </button>
     </div>
@@ -145,14 +284,14 @@
             <div class="absolute -bottom-10 -right-10 w-40 h-40 bg-amber-500/10 rounded-full blur-3xl"></div>
 
             <span class="text-6xl inline-block mb-4 animate-bounce">👑</span>
-            <h2 class="text-3xl font-black text-white tracking-tight">Game Completed!</h2>
+            <h2 class="font-display text-3xl font-black text-[var(--ink)] tracking-tight">Game Completed!</h2>
 
             <!-- Leaderboard Rankings List -->
             <div class="bg-slate-900/80 border border-slate-700/30 rounded-2xl p-4 mb-8 divide-y divide-slate-800" id="final-leaderboard">
                 <!-- Sorted from 1st (lowest) to last (highest) scores -->
             </div>
 
-            <button onclick="resetToSetup()" class="w-full bg-gradient-to-r from-rose-600 to-rose-500 hover:from-rose-500 hover:to-rose-400 text-white font-extrabold py-4 px-6 rounded-2xl shadow-lg transition-all active:scale-[0.98]">
+            <button onclick="resetToSetup()" class="w-full bg-[var(--accent)] hover:opacity-90 text-[var(--on-accent)] font-extrabold py-4 px-6 rounded-2xl shadow-lg transition-all active:scale-[0.98]">
                 Start Another Match
             </button>
         </div>
@@ -164,7 +303,7 @@
             <button onclick="closeStatsView()" class="text-slate-300 hover:text-white bg-slate-800/80 hover:bg-slate-800 border border-slate-700/50 px-3 py-2 rounded-xl transition-all active:scale-95">
                 ← Back
             </button>
-            <h1 class="text-2xl font-extrabold tracking-tight bg-gradient-to-r from-rose-400 to-amber-300 bg-clip-text text-transparent">Stats &amp; Records</h1>
+            <h1 class="font-display text-2xl font-extrabold tracking-tight text-[var(--accent)]" style="letter-spacing: var(--word-tracking); text-transform: var(--word-case);">Stats &amp; Records</h1>
         </div>
 
         <div id="stats-loading" class="text-center text-slate-400 text-sm py-10">Loading history…</div>
@@ -177,7 +316,7 @@
 
             <!-- Total games played -->
             <div class="text-center text-sm text-slate-400">
-                <span id="stats-total-games" class="font-black text-white text-lg">0</span> games played all-time
+                <span id="stats-total-games" class="font-display font-black text-white text-lg">0</span> games played all-time
             </div>
 
             <!-- Leaderboard -->
@@ -267,7 +406,7 @@
                     <p class="text-slate-400 text-sm mb-6">A ${state.activePlayerCount}-player match was still on Round ${state.currentRoundNumber} when this closed.</p>
                     <div class="flex space-x-3">
                         <button onclick="discardSavedGame()" class="flex-1 bg-slate-700 text-slate-300 py-3 rounded-xl font-bold hover:bg-slate-600 transition-colors">Discard</button>
-                        <button onclick="resumeSavedGame()" class="flex-1 bg-emerald-600 text-white py-3 rounded-xl font-bold hover:bg-emerald-500 transition-colors">Resume</button>
+                        <button onclick="resumeSavedGame()" class="flex-1 bg-[var(--success)] text-[var(--on-success)] py-3 rounded-xl font-bold hover:opacity-90 transition-colors">Resume</button>
                     </div>
                 </div>`;
             document.body.appendChild(confirmBox);
@@ -314,6 +453,73 @@
             updateHistoryUI();
             showToast("Resumed your game in progress");
         }
+
+        // ── Theme picker ─────────────────────────────────────────────────
+        const THEME_KEY = 'hearts_theme_v1';
+        const THEME_META = {
+            light: { label: 'Light', blurb: 'Parlor Felt — ivory & card-table green', swatch: '#2F5233', bg: '#FBF9F3' },
+            dark: { label: 'Dark', blurb: 'Felt & Ember — warm charcoal & brass', swatch: '#C98A2B', bg: '#17130F' },
+            ranch: { label: 'Ranch', blurb: 'Brand & Iron — oxblood & near-black', swatch: '#8C1D18', bg: '#141110' }
+        };
+
+        function applyTheme(name) {
+            if (name === 'light') {
+                document.documentElement.removeAttribute('data-theme');
+            } else {
+                document.documentElement.setAttribute('data-theme', name);
+            }
+            const meta = document.getElementById('meta-theme-color');
+            if (meta && THEME_META[name]) {
+                meta.setAttribute('content', THEME_META[name].bg);
+            }
+        }
+
+        function getCurrentTheme() {
+            return document.documentElement.getAttribute('data-theme') || 'light';
+        }
+
+        function setTheme(name) {
+            applyTheme(name);
+            try { localStorage.setItem(THEME_KEY, name); } catch (err) { /* ignore */ }
+            const modal = document.getElementById('theme-picker-modal');
+            if (modal) modal.remove();
+        }
+
+        function openThemePicker() {
+            const current = getCurrentTheme();
+            const box = document.createElement('div');
+            box.id = 'theme-picker-modal';
+            box.className = "fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4";
+
+            let optionsHtml = '';
+            Object.keys(THEME_META).forEach((key) => {
+                const meta = THEME_META[key];
+                const isActive = key === current;
+                optionsHtml += `
+                    <button onclick="setTheme('${key}')" class="w-full flex items-center gap-3 text-left p-4 rounded-2xl border-2 transition-colors ${isActive ? 'border-[var(--accent)] bg-[var(--accent-soft)]' : 'border-slate-700/50 hover:bg-slate-700/50'}">
+                        <span class="w-8 h-8 rounded-full flex-shrink-0" style="background:${meta.swatch}"></span>
+                        <span class="flex-1 min-w-0">
+                            <span class="block font-bold text-white">${meta.label}${isActive ? ' &middot; current' : ''}</span>
+                            <span class="block text-xs text-slate-400 truncate">${meta.blurb}</span>
+                        </span>
+                    </button>`;
+            });
+
+            box.innerHTML = `
+                <div class="bg-slate-800 border border-slate-700/50 p-6 rounded-3xl w-full max-w-sm shadow-2xl">
+                    <h3 class="text-lg font-bold text-white mb-1 text-center">Choose a Theme</h3>
+                    <p class="text-slate-400 text-sm mb-5 text-center">Applies on this device only.</p>
+                    <div class="space-y-3 mb-4">${optionsHtml}</div>
+                    <button onclick="document.getElementById('theme-picker-modal').remove()" class="w-full bg-slate-700 text-slate-300 py-3 rounded-xl font-bold hover:bg-slate-600 transition-colors">Close</button>
+                </div>`;
+            document.body.appendChild(box);
+        }
+
+        (function initTheme() {
+            let saved = 'light';
+            try { saved = localStorage.getItem(THEME_KEY) || 'light'; } catch (err) { /* ignore */ }
+            applyTheme(saved);
+        })();
 
         // Bootstrapping
         window.addEventListener('DOMContentLoaded', async () => {
@@ -574,7 +780,7 @@ async function checkNewPlayer(selectElement, seatIndex) {
                 header.innerHTML += `
                     <div class="bg-slate-900/40 border border-slate-700/20 rounded-2xl p-2 flex flex-col items-center">
                         <span class="text-xs text-slate-400 font-bold truncate max-w-full block" title="${displayName}">${displayName}</span>
-                        <span id="run-tot-${i}" class="text-xl font-black text-rose-500 mt-1">0</span>
+                        <span id="run-tot-${i}" class="font-display text-xl font-black text-rose-500 mt-1">0</span>
                     </div>`;
             }
         }
@@ -596,8 +802,8 @@ async function checkNewPlayer(selectElement, seatIndex) {
                             <button onclick="triggerShootMoon(${i})" class="bg-slate-800 border border-slate-700 text-[10px] uppercase font-bold py-2.5 px-3 rounded-xl hover:bg-slate-700 text-amber-400 active:scale-[0.95] transition-all">
                                 🌙 Moon
                             </button>
-                            <input type="number" pattern="[0-9]*" inputmode="numeric" id="round-score-p${i}" placeholder="0" oninput="runScoreValidation()" 
-                                class="w-16 bg-slate-800 border border-slate-700 text-center py-2 px-1 text-lg font-black text-white rounded-xl focus:outline-none focus:border-rose-500 focus:bg-slate-700/50">
+                            <input type="number" pattern="[0-9]*" inputmode="numeric" id="round-score-p${i}" placeholder="0" oninput="runScoreValidation()"
+                                class="font-display w-16 bg-slate-800 border border-slate-700 text-center py-2 px-1 text-lg font-black text-white rounded-xl focus:outline-none focus:border-rose-500 focus:bg-slate-700/50">
                         </div>
                     </div>`;
             }
@@ -619,7 +825,7 @@ async function checkNewPlayer(selectElement, seatIndex) {
                 badge.className = "px-4 py-2 rounded-xl text-sm font-bold mb-3 flex items-center space-x-2 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
                 text.innerHTML = `✓ Hand Validated (26/26)`;
                 btn.disabled = false;
-                btn.className = "w-full py-4 rounded-2xl bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white font-extrabold shadow-lg shadow-emerald-900/20 active:scale-[0.98] cursor-pointer transition-all duration-200";
+                btn.className = "w-full py-4 rounded-2xl bg-[var(--success)] hover:opacity-90 text-[var(--on-success)] font-extrabold shadow-lg active:scale-[0.98] cursor-pointer transition-all duration-200";
             } else {
                 badge.className = "px-4 py-2 rounded-xl text-sm font-bold mb-3 flex items-center space-x-2 bg-amber-500/10 text-amber-400 border border-amber-500/20";
                 if (remaining > 0) {
@@ -763,7 +969,7 @@ async function checkNewPlayer(selectElement, seatIndex) {
                     <p class="text-slate-400 text-sm mb-6">Current active round history scores will not be finalized.</p>
                     <div class="flex space-x-3">
                         <button onclick="document.getElementById('custom-confirm-modal').remove()" class="flex-1 bg-slate-700 text-slate-300 py-3 rounded-xl font-bold hover:bg-slate-600 transition-colors">Resume</button>
-                        <button onclick="resetToSetup(); document.getElementById('custom-confirm-modal').remove()" class="flex-1 bg-rose-600 text-white py-3 rounded-xl font-bold hover:bg-rose-500 transition-colors">Abandon</button>
+                        <button onclick="resetToSetup(); document.getElementById('custom-confirm-modal').remove()" class="flex-1 bg-[var(--accent)] text-[var(--on-accent)] py-3 rounded-xl font-bold hover:opacity-90 transition-colors">Abandon</button>
                     </div>
                 </div>`;
             document.body.appendChild(confirmBox);
@@ -786,7 +992,7 @@ async function checkNewPlayer(selectElement, seatIndex) {
                     <p class="text-slate-400 text-sm mb-6">This will end the match immediately and save the current scoreboard rankings.</p>
                     <div class="flex space-x-3">
                         <button onclick="document.getElementById('custom-end-modal').remove()" class="flex-1 bg-slate-700 text-slate-300 py-3 rounded-xl font-bold hover:bg-slate-600 transition-colors">Keep Playing</button>
-                        <button onclick="endActiveGame(); document.getElementById('custom-end-modal').remove()" class="flex-1 bg-emerald-600 text-white py-3 rounded-xl font-bold hover:bg-emerald-500 transition-colors">End Game</button>
+                        <button onclick="endActiveGame(); document.getElementById('custom-end-modal').remove()" class="flex-1 bg-[var(--success)] text-[var(--on-success)] py-3 rounded-xl font-bold hover:opacity-90 transition-colors">End Game</button>
                     </div>
                 </div>`;
             document.body.appendChild(confirmBox);
@@ -828,7 +1034,7 @@ async function checkNewPlayer(selectElement, seatIndex) {
                             <span class="px-2.5 py-1 rounded-lg text-xs font-bold ${badgeClass}">${badge}</span>
                             <span class="font-bold text-white">${player.name}</span>
                         </div>
-                        <span class="text-xl font-black text-rose-500">${player.score} pts</span>
+                        <span class="font-display text-xl font-black text-rose-500">${player.score} pts</span>
                     </div>`;
             });
         }
@@ -894,7 +1100,7 @@ async function checkNewPlayer(selectElement, seatIndex) {
                 bestGameEl.innerHTML = `
                     <span class="text-4xl inline-block mb-2">🏆</span>
                     <div class="text-xs font-bold text-slate-400 uppercase tracking-wider">Best Game Ever</div>
-                    <div class="text-2xl font-black text-amber-400 mt-1">${bg.playerName}</div>
+                    <div class="font-display text-2xl font-black text-amber-400 mt-1">${bg.playerName}</div>
                     <div class="text-sm text-slate-400 mt-1">${bg.score} pts &middot; ${new Date(bg.timestamp).toLocaleDateString()}</div>`;
             } else {
                 bestGameEl.innerHTML = `<div class="text-sm text-slate-500 italic">No completed games yet.</div>`;
