@@ -207,11 +207,14 @@
         <div class="bg-slate-800/80 backdrop-blur-md rounded-3xl p-6 border border-slate-700/50 shadow-xl space-y-3">
             <label class="block text-sm font-bold text-slate-300 uppercase tracking-wider">Game Name (Optional)</label>
             <input type="text" id="setup-tournament" placeholder="e.g. Thanksgiving 2026" class="w-full bg-slate-900 border-2 border-slate-700/60 rounded-2xl px-5 py-4 text-lg text-slate-100 placeholder-slate-600 focus:outline-none focus:border-rose-500 transition-colors h-14">
-            <div class="flex flex-wrap gap-3 mt-3 text-sm text-slate-300">
+            <div class="flex flex-wrap items-center gap-3 mt-3 text-sm text-slate-300">
                 <label class="inline-flex items-center gap-2 bg-slate-900/80 border border-slate-700/50 rounded-2xl px-4 py-3">
                     <input type="checkbox" id="setup-cancellation-rules" class="w-4 h-4 text-rose-400 rounded focus:ring-rose-500" />
                     Cancellation rules
                 </label>
+                <button type="button" onclick="openRulesView()" class="text-xs font-bold text-[var(--accent)] hover:opacity-70 underline underline-offset-2 transition-opacity">
+                    What's this?
+                </button>
             </div>
         </div>
 
@@ -332,6 +335,43 @@
                 <div id="stats-recent-games" class="divide-y divide-slate-800">
                 </div>
             </div>
+        </div>
+    </div>
+
+    <!-- CANCELLATION RULES EXPLAINER VIEW -->
+    <div id="rules-view" class="hidden max-w-md mx-auto px-4 pt-8 pb-16 space-y-6">
+        <div class="flex items-center space-x-3">
+            <button onclick="closeRulesView()" class="text-slate-300 hover:text-white bg-slate-800/80 hover:bg-slate-800 border border-slate-700/50 px-3 py-2 rounded-xl transition-all active:scale-95">
+                ← Back
+            </button>
+            <h1 class="font-display text-2xl font-extrabold tracking-tight text-[var(--accent)]" style="letter-spacing: var(--word-tracking); text-transform: var(--word-case);">Cancellation Rules</h1>
+        </div>
+
+        <p class="text-sm text-slate-400">A variant for bigger tables. Here's exactly what it changes from standard Hearts.</p>
+
+        <div class="bg-slate-800/80 backdrop-blur-md rounded-3xl p-6 border border-slate-700/50 shadow-xl space-y-3">
+            <label class="block text-sm font-bold text-slate-300 uppercase tracking-wider border-b border-slate-700/40 pb-3 mb-1">Standard Hearts (recap)</label>
+            <ul class="space-y-2 text-sm text-slate-300 list-disc list-outside pl-4">
+                <li>One 52-card deck, best with exactly 4 players</li>
+                <li>Each Heart is worth 1 point, the Queen of Spades is worth 13 — 26 points are in play each hand</li>
+                <li>Players must follow the suit led if they can</li>
+                <li>No point cards may be played on the first trick, and Hearts can't be led until they've been "broken" (played off-suit earlier in the hand)</li>
+                <li>Lowest total score wins once someone reaches 100</li>
+            </ul>
+        </div>
+
+        <div class="bg-slate-800/80 backdrop-blur-md rounded-3xl p-6 border border-slate-700/50 shadow-xl space-y-3">
+            <label class="block text-sm font-bold text-slate-300 uppercase tracking-wider border-b border-slate-700/40 pb-3 mb-1">What Cancellation Rules Change</label>
+            <ul class="space-y-2 text-sm text-slate-300 list-disc list-outside pl-4">
+                <li>Two full 52-card decks are shuffled together (104 cards), so 5–7+ players can each still get a full, even hand</li>
+                <li>Since every card now has a duplicate, if the exact same card is played twice in one trick (e.g. both Jacks of Clubs), that pair cancels out — neither one counts toward winning the trick</li>
+                <li>If every card played to a trick cancels out, the whole trick carries over and gets added to the next trick instead of being collected</li>
+                <li>Scoring is otherwise unchanged: Hearts = 1 point, Queen of Spades = 13, lowest total still wins</li>
+            </ul>
+        </div>
+
+        <div class="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-4 text-sm text-amber-400">
+            Heads up: since a carried-over trick can double up, a single trick is sometimes worth more points than usual. Worth double-checking the count before you enter a round's scores.
         </div>
     </div>
 
@@ -1076,6 +1116,17 @@ async function checkNewPlayer(selectElement, seatIndex) {
 
         function closeStatsView() {
             document.getElementById('stats-view').classList.add('hidden');
+            document.getElementById('setup-view').classList.remove('hidden');
+        }
+
+        // ── Cancellation Rules explainer screen ──────────────────────────
+        function openRulesView() {
+            document.getElementById('setup-view').classList.add('hidden');
+            document.getElementById('rules-view').classList.remove('hidden');
+        }
+
+        function closeRulesView() {
+            document.getElementById('rules-view').classList.add('hidden');
             document.getElementById('setup-view').classList.remove('hidden');
         }
 
