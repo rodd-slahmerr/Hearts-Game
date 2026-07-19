@@ -19,7 +19,7 @@
     <style>
         :root, [data-theme="light"] {
             --bg:#FBF9F3; --surface:#FFFFFF; --surface-2:#F1EFE4; --surface-hover:#E9E5D6;
-            --ink:#21301F; --muted:#5C6B57; --border:#E4DFCF;
+            --ink:#21301F; --muted:#5C6B57; --border:#D6CEB4;
             --accent:#2F5233; --accent-soft:rgba(47,82,51,0.10); --accent-soft-2:rgba(47,82,51,0.24);
             --accent2:#7A5230; --accent2-soft:rgba(122,82,48,0.12); --accent2-soft-2:rgba(122,82,48,0.26);
             --success:#3F7A4C; --success-soft:rgba(63,122,76,0.12); --success-soft-2:rgba(63,122,76,0.26);
@@ -194,7 +194,7 @@
             <div class="flex items-center justify-between border-b border-slate-700/40 pb-3 mb-2">
                 <label class="block text-sm font-bold text-slate-300 uppercase tracking-wider">Players at Table</label>
                 <button type="button" onclick="addPlayerSeat()" class="text-xs font-black text-emerald-400 hover:text-emerald-300 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 px-3 py-2 rounded-xl transition-all active:scale-95">
-                    ➕ Add Player Seat
+                    Add Player Seat
                 </button>
             </div>
             
@@ -217,7 +217,7 @@
 
         <!-- ACTION INITIATION -->
         <button onclick="startGame()" class="w-full bg-[var(--accent)] hover:opacity-90 text-[var(--on-accent)] font-extrabold py-5 px-6 rounded-3xl shadow-lg active:scale-[0.98] transition-all text-center text-xl tracking-wide">
-            🚀 Begin Game
+            Begin Game
         </button>
     </div>
 
@@ -593,21 +593,20 @@ function renderPlayerSeats() {
 
         let dropdownHtml = `
             <div class="flex items-center space-x-3 bg-slate-900/40 p-2.5 rounded-2xl border-2 border-slate-800/80" id="seat-wrapper-${i}">
-                <span class="text-sm font-black text-slate-400 w-10 text-center bg-slate-800/80 py-2 rounded-xl border border-slate-700/20">P${i+1}</span>
                 <select id="setup-player-select-${i}" onchange="checkNewPlayer(this, ${i})" class="flex-1 bg-slate-900 border-2 border-slate-700/50 rounded-xl px-4 py-4 text-slate-100 focus:outline-none focus:border-rose-500 text-lg font-bold cursor-pointer h-14">`;
-        
+
         dbPlayers.forEach((p) => {
             const isSelected = (p.id === selectedVal) ? 'selected' : '';
             dropdownHtml += `<option value="${p.id}" ${isSelected}>${p.name}</option>`;
         });
-        
+
         // Add the "+ Add New Player" option
         dropdownHtml += `<option value="NEW_PLAYER" class="text-emerald-400 font-bold">+ Add New Player</option>`;
         dropdownHtml += `</select>`;
 
         if (activePlayerCount > 3) {
             dropdownHtml += `
-                <button type="button" onclick="removePlayerSeat(${i})" class="p-3 text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 rounded-xl border-2 border-rose-500/10 hover:border-rose-500/30 transition-all flex items-center justify-center h-14 w-14">
+                <button type="button" onclick="removePlayerSeat(${i})" class="p-3 text-rose-400 hover:text-rose-300 bg-[var(--surface)] hover:bg-[var(--accent-soft)] rounded-xl border-2 border-rose-500/10 hover:border-rose-500/30 transition-all flex items-center justify-center h-14 w-14">
                     <span class="text-xl font-bold">✕</span>
                 </button>`;
         }
@@ -679,19 +678,18 @@ async function checkNewPlayer(selectElement, seatIndex) {
                 
                 let dropdownHtml = `
                     <div class="flex items-center space-x-3 bg-slate-900/40 p-2.5 rounded-2xl border-2 border-slate-800/80" id="seat-wrapper-${i}">
-                        <span class="text-sm font-black text-slate-400 w-10 text-center bg-slate-800/80 py-2 rounded-xl border border-slate-700/20">P${i+1}</span>
                         <select id="setup-player-select-${i}" class="flex-1 bg-slate-900 border-2 border-slate-700/50 rounded-xl px-4 py-4 text-slate-100 focus:outline-none focus:border-rose-500 text-lg font-bold cursor-pointer h-14">`;
-                
+
                 dbPlayers.forEach((p) => {
                     const isSelected = (p.id === selectedVal) ? 'selected' : '';
                     dropdownHtml += `<option value="${p.id}" ${isSelected}>${p.name}</option>`;
                 });
-                
+
                 dropdownHtml += `</select>`;
 
                 if (activePlayerCount > 3) {
                     dropdownHtml += `
-                        <button type="button" onclick="removePlayerSeat(${i})" class="p-3 text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 rounded-xl border-2 border-rose-500/10 hover:border-rose-500/30 transition-all flex items-center justify-center h-14 w-14" title="Remove Player Seat">
+                        <button type="button" onclick="removePlayerSeat(${i})" class="p-3 text-rose-400 hover:text-rose-300 bg-[var(--surface)] hover:bg-[var(--accent-soft)] rounded-xl border-2 border-rose-500/10 hover:border-rose-500/30 transition-all flex items-center justify-center h-14 w-14" title="Remove Player Seat">
                             <span class="text-xl font-bold">✕</span>
                         </button>`;
                 }
