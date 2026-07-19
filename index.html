@@ -185,7 +185,7 @@
                 Stats
             </button>
             <button onclick="openThemePicker()" class="absolute left-0 top-1 text-xs font-bold text-slate-300 hover:text-amber-300 bg-slate-800/80 hover:bg-slate-800 border border-slate-700/50 px-3 py-2 rounded-xl transition-all active:scale-95">
-                🎨 Theme
+                Theme
             </button>
         </div>
 
@@ -456,10 +456,16 @@
 
         // ── Theme picker ─────────────────────────────────────────────────
         const THEME_KEY = 'hearts_theme_v1';
+        const BARN_ICON = `<svg viewBox="0 0 24 24" width="32" height="32" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <rect x="3" y="11" width="18" height="10" fill="#8C1D18"/>
+            <path d="M1 11L12 3L23 11H1Z" fill="#141110"/>
+            <rect x="10" y="15" width="4" height="6" fill="#141110"/>
+        </svg>`;
+
         const THEME_META = {
-            light: { label: 'Light', blurb: 'Parlor Felt — ivory & card-table green', swatch: '#2F5233', bg: '#FBF9F3' },
-            dark: { label: 'Dark', blurb: 'Felt & Ember — warm charcoal & brass', swatch: '#C98A2B', bg: '#17130F' },
-            ranch: { label: 'Ranch', blurb: 'Brand & Iron — oxblood & near-black', swatch: '#8C1D18', bg: '#141110' }
+            light: { label: 'Light', swatch: '#2F5233', bg: '#FBF9F3' },
+            dark: { label: 'Dark', swatch: '#C98A2B', bg: '#17130F' },
+            ranch: { label: 'Ranch', swatch: '#8C1D18', bg: '#141110' }
         };
 
         function applyTheme(name) {
@@ -495,13 +501,13 @@
             Object.keys(THEME_META).forEach((key) => {
                 const meta = THEME_META[key];
                 const isActive = key === current;
+                const swatchHtml = key === 'ranch'
+                    ? `<span class="w-8 h-8 rounded-full flex-shrink-0 overflow-hidden">${BARN_ICON}</span>`
+                    : `<span class="w-8 h-8 rounded-full flex-shrink-0" style="background:${meta.swatch}"></span>`;
                 optionsHtml += `
                     <button onclick="setTheme('${key}')" class="w-full flex items-center gap-3 text-left p-4 rounded-2xl border-2 transition-colors ${isActive ? 'border-[var(--accent)] bg-[var(--accent-soft)]' : 'border-slate-700/50 hover:bg-slate-700/50'}">
-                        <span class="w-8 h-8 rounded-full flex-shrink-0" style="background:${meta.swatch}"></span>
-                        <span class="flex-1 min-w-0">
-                            <span class="block font-bold text-white">${meta.label}${isActive ? ' &middot; current' : ''}</span>
-                            <span class="block text-xs text-slate-400 truncate">${meta.blurb}</span>
-                        </span>
+                        ${swatchHtml}
+                        <span class="flex-1 min-w-0 font-bold text-white">${meta.label}${isActive ? ' &middot; current' : ''}</span>
                     </button>`;
             });
 
