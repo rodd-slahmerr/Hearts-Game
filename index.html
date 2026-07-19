@@ -84,6 +84,12 @@
         html .rounded-2xl { border-radius: var(--radius-md); }
         html .rounded-xl  { border-radius: var(--radius-sm); }
 
+        /* Scoreboard: current lowest-score leader gets an accent highlight */
+        #scoreboard-header .is-leader {
+            border-color: var(--accent);
+            background: var(--accent-soft);
+        }
+
         /* ---- Themed color overrides, mapped from the original hardcoded Tailwind palette ---- */
         html .bg-slate-900 { background-color: var(--bg); }
         html .text-slate-100,
@@ -831,6 +837,46 @@ async function checkNewPlayer(selectElement, seatIndex) {
                         <span id="run-tot-${i}" class="font-display text-xl font-black text-rose-500 mt-1">0</span>
                     </div>`;
             }
+            updateScoreboardOrder();
+        }
+
+        // Reorders the scoreboard chips so the lowest running total sits furthest
+        // left, animating the shuffle with a FLIP transition (measure old
+        // positions, apply the new order, then animate from old to new).
+        function updateScoreboardOrder() {
+            const header = document.getElementById('scoreboard-header');
+            const chips = Array.from(header.children);
+            if (chips.length === 0) return;
+
+            const firstRects = chips.map((chip) => chip.getBoundingClientRect());
+
+            const minScore = Math.min(...runningTotals.slice(0, activePlayerCount));
+            const seatIndices = chips.map((_, i) => i);
+            seatIndices.sort((a, b) => runningTotals[a] - runningTotals[b]);
+
+            seatIndices.forEach((seatIdx, rank) => {
+                const chip = chips[seatIdx];
+                chip.style.order = rank;
+                chip.classList.toggle('is-leader', runningTotals[seatIdx] === minScore);
+            });
+
+            const lastRects = chips.map((chip) => chip.getBoundingClientRect());
+
+            chips.forEach((chip, i) => {
+                const dx = firstRects[i].left - lastRects[i].left;
+                const dy = firstRects[i].top - lastRects[i].top;
+                chip.style.transition = 'none';
+                chip.style.transform = (dx || dy) ? `translate(${dx}px, ${dy}px)` : '';
+            });
+
+            // Force a reflow so the instant "jump back" above is committed
+            // before re-enabling the transition below.
+            void header.offsetHeight;
+
+            chips.forEach((chip) => {
+                chip.style.transition = 'transform 0.45s cubic-bezier(0.4, 0, 0.2, 1)';
+                chip.style.transform = '';
+            });
         }
 
         function buildRoundInputFields() {
@@ -927,6 +973,7 @@ async function checkNewPlayer(selectElement, seatIndex) {
                 document.getElementById(`run-tot-${i}`).textContent = runningTotals[i];
             }
 
+            updateScoreboardOrder();
             updateHistoryUI();
 
             const maxScore = Math.max(...runningTotals);
@@ -981,6 +1028,7 @@ async function checkNewPlayer(selectElement, seatIndex) {
                 document.getElementById(`run-tot-${i}`).textContent = runningTotals[i];
             }
 
+            updateScoreboardOrder();
             currentRoundNumber--;
             buildRoundInputFields();
             updateHistoryUI();
