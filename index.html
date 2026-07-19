@@ -819,17 +819,29 @@ async function checkNewPlayer(selectElement, seatIndex) {
         }
 
         function runScoreValidation() {
-            let total = 0;
+            const scores = [];
             for (let i = 0; i < activePlayerCount; i++) {
-                total += parseInt(document.getElementById(`round-score-p${i}`).value) || 0;
+                scores.push(parseInt(document.getElementById(`round-score-p${i}`).value) || 0);
             }
+            const total = scores.reduce((sum, s) => sum + s, 0);
+
+            // A shot-the-moon hand doesn't sum to 26: the shooter takes 0 and
+            // everyone else is charged 26, so total is 26 * (players - 1).
+            const zeroCount = scores.filter((s) => s === 0).length;
+            const twentySixCount = scores.filter((s) => s === 26).length;
+            const isMoonShot = activePlayerCount > 1 && zeroCount === 1 && twentySixCount === activePlayerCount - 1;
 
             const remaining = 26 - total;
             const badge = document.getElementById('val-badge');
             const text = document.getElementById('val-text');
             const btn = document.getElementById('btn-advance');
 
-            if (remaining === 0) {
+            if (isMoonShot) {
+                badge.className = "px-4 py-2 rounded-xl text-sm font-bold mb-3 flex items-center space-x-2 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
+                text.innerHTML = `🌙 Moon Shot Validated`;
+                btn.disabled = false;
+                btn.className = "w-full py-4 rounded-2xl bg-[var(--success)] hover:opacity-90 text-[var(--on-success)] font-extrabold shadow-lg active:scale-[0.98] cursor-pointer transition-all duration-200";
+            } else if (remaining === 0) {
                 badge.className = "px-4 py-2 rounded-xl text-sm font-bold mb-3 flex items-center space-x-2 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
                 text.innerHTML = `✓ Hand Validated (26/26)`;
                 btn.disabled = false;
