@@ -4,6 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hearts</title>
+
+    <!-- PWA: installable home-screen app -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0f172a">
+    <link rel="icon" href="icons/favicon-32.png" sizes="32x32" type="image/png">
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Hearts">
+
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
@@ -190,6 +200,15 @@
     <div id="status-bar" class="fixed bottom-0 left-0 right-0 h-[4px] bg-slate-800 transition-all duration-500 animate-pulse" title="Cloud Sync Status Indicator"></div>
 
     <script>
+        // Register service worker for offline/installable support
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js').catch((err) => {
+                    console.warn('Service worker registration failed', err);
+                });
+            });
+        }
+
         // INSERT YOUR GOOGLE APPS SCRIPT WEB APP URL HERE
         const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzRq4Z0QFxmdDxHF1anMaEzAvSRB9gfD-UpUsn11BcIpqTPClEiMXXT4zsh_nLaGobE/exec";
 
@@ -210,14 +229,108 @@
         let currentGameId = "";
         let currentRoundNumber = 1;
         let runningTotals = [];
-        let roundLogs = []; 
+        let roundLogs = [];
         let currentTournament = "None";
         let currentCancellationRules = false;
+
+        // In-progress game persistence (survives tab reloads/kills)
+        const ACTIVE_GAME_KEY = "hearts_active_game_v1";
+        let pendingResumeState = null;
+
+        function saveActiveGameState() {
+            const state = {
+                currentGameId,
+                currentRoundNumber,
+                runningTotals,
+                roundLogs,
+                selectedPlayerIds,
+                activePlayerCount,
+                currentTournament,
+                currentCancellationRules
+            };
+            localStorage.setItem(ACTIVE_GAME_KEY, JSON.stringify(state));
+        }
+
+        function clearActiveGameState() {
+            localStorage.removeItem(ACTIVE_GAME_KEY);
+        }
+
+        function promptResumeGame(state) {
+            pendingResumeState = state;
+            const confirmBox = document.createElement('div');
+            confirmBox.id = 'resume-game-modal';
+            confirmBox.className = "fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4";
+            confirmBox.innerHTML = `
+                <div class="bg-slate-800 border border-slate-700/50 p-6 rounded-3xl w-full max-w-sm text-center shadow-2xl">
+                    <span class="text-4xl block mb-3">🔄</span>
+                    <h3 class="text-lg font-bold text-white mb-2">Resume Game in Progress?</h3>
+                    <p class="text-slate-400 text-sm mb-6">A ${state.activePlayerCount}-player match was still on Round ${state.currentRoundNumber} when this closed.</p>
+                    <div class="flex space-x-3">
+                        <button onclick="discardSavedGame()" class="flex-1 bg-slate-700 text-slate-300 py-3 rounded-xl font-bold hover:bg-slate-600 transition-colors">Discard</button>
+                        <button onclick="resumeSavedGame()" class="flex-1 bg-emerald-600 text-white py-3 rounded-xl font-bold hover:bg-emerald-500 transition-colors">Resume</button>
+                    </div>
+                </div>`;
+            document.body.appendChild(confirmBox);
+        }
+
+        function discardSavedGame() {
+            clearActiveGameState();
+            pendingResumeState = null;
+            document.getElementById('resume-game-modal').remove();
+        }
+
+        function resumeSavedGame() {
+            const state = pendingResumeState;
+            if (!state) return;
+
+            currentGameId = state.currentGameId;
+            currentRoundNumber = state.currentRoundNumber;
+            runningTotals = state.runningTotals;
+            roundLogs = state.roundLogs;
+            selectedPlayerIds = state.selectedPlayerIds;
+            activePlayerCount = state.activePlayerCount;
+            currentTournament = state.currentTournament;
+            currentCancellationRules = state.currentCancellationRules;
+            pendingResumeState = null;
+
+            document.getElementById('resume-game-modal').remove();
+            document.getElementById('setup-view').classList.add('hidden');
+            document.getElementById('game-view').classList.remove('hidden');
+
+            document.getElementById('game-id-display').textContent = `Game ID: ${currentGameId.substring(2, 10)}`;
+            const badge = document.getElementById('badge-tournament');
+            if (currentTournament !== "None") {
+                badge.textContent = currentTournament;
+                badge.classList.remove('hidden');
+            } else {
+                badge.classList.add('hidden');
+            }
+
+            buildScoreboardHeaders();
+            for (let i = 0; i < activePlayerCount; i++) {
+                document.getElementById(`run-tot-${i}`).textContent = runningTotals[i];
+            }
+            buildRoundInputFields();
+            updateHistoryUI();
+            showToast("Resumed your game in progress");
+        }
 
         // Bootstrapping
         window.addEventListener('DOMContentLoaded', async () => {
             await fetchPlayersFromSheet();
             renderPlayerSeats(); // Trigger initial seat generation
+
+            const saved = localStorage.getItem(ACTIVE_GAME_KEY);
+            if (saved) {
+                try {
+                    const state = JSON.parse(saved);
+                    if (state && state.currentGameId) {
+                        promptResumeGame(state);
+                    }
+                } catch (err) {
+                    localStorage.removeItem(ACTIVE_GAME_KEY);
+                }
+            }
         });
 
         // Pull active directory from Sheets database
@@ -442,6 +555,7 @@ async function checkNewPlayer(selectElement, seatIndex) {
             buildScoreboardHeaders();
             buildRoundInputFields();
             updateHistoryUI();
+            saveActiveGameState();
         }
 
         // Maps player ID to Display Name
@@ -555,6 +669,7 @@ async function checkNewPlayer(selectElement, seatIndex) {
             } else {
                 currentRoundNumber++;
                 buildRoundInputFields();
+                saveActiveGameState();
                 showToast(`Saved Round ${currentRoundNumber - 1}`);
             }
         }
@@ -603,7 +718,8 @@ async function checkNewPlayer(selectElement, seatIndex) {
             currentRoundNumber--;
             buildRoundInputFields();
             updateHistoryUI();
-            
+            saveActiveGameState();
+
             showToast(`Rolled back Round ${currentRoundNumber}!`);
         }
 
@@ -677,6 +793,7 @@ async function checkNewPlayer(selectElement, seatIndex) {
         }
 
         function endActiveGame() {
+            clearActiveGameState();
             document.getElementById('game-view').classList.add('hidden');
             document.getElementById('gameover-view').classList.remove('hidden');
 
@@ -718,6 +835,7 @@ async function checkNewPlayer(selectElement, seatIndex) {
 
         // Cleaned up helper to refresh/return state
         function resetToSetup() {
+            clearActiveGameState();
             document.getElementById('gameover-view').classList.add('hidden');
             document.getElementById('game-view').classList.add('hidden');
             document.getElementById('setup-view').classList.remove('hidden');
