@@ -603,7 +603,7 @@ function renderPlayerSeats() {
 
         let dropdownHtml = `
             <div class="flex items-center space-x-3 bg-slate-900/40 p-2.5 rounded-2xl border-2 border-slate-800/80" id="seat-wrapper-${i}">
-                <select id="setup-player-select-${i}" onchange="checkNewPlayer(this, ${i})" class="flex-1 bg-slate-900 border-2 border-slate-700/50 rounded-xl px-4 py-4 text-slate-100 focus:outline-none focus:border-rose-500 text-lg font-bold cursor-pointer h-14">`;
+                <select id="setup-player-select-${i}" onchange="checkNewPlayer(this, ${i})" class="flex-1 bg-slate-900 border-2 border-slate-700/50 rounded-xl px-4 py-4 text-slate-100 focus:outline-none focus:border-rose-500 text-lg font-bold cursor-pointer h-16 leading-normal">`;
 
         dbPlayers.forEach((p) => {
             const isSelected = (p.id === selectedVal) ? 'selected' : '';
@@ -616,7 +616,7 @@ function renderPlayerSeats() {
 
         if (activePlayerCount > 3) {
             dropdownHtml += `
-                <button type="button" onclick="removePlayerSeat(${i})" class="p-3 text-rose-400 hover:text-rose-300 bg-[var(--surface)] hover:bg-[var(--accent-soft)] rounded-xl border-2 border-rose-500/10 hover:border-rose-500/30 transition-all flex items-center justify-center h-14 w-14">
+                <button type="button" onclick="removePlayerSeat(${i})" class="p-3 text-rose-400 hover:text-rose-300 bg-[var(--surface)] hover:bg-[var(--accent-soft)] rounded-xl border-2 border-rose-500/10 hover:border-rose-500/30 transition-all flex items-center justify-center h-16 w-16">
                     <span class="text-xl font-bold">✕</span>
                 </button>`;
         }
@@ -688,7 +688,7 @@ async function checkNewPlayer(selectElement, seatIndex) {
                 
                 let dropdownHtml = `
                     <div class="flex items-center space-x-3 bg-slate-900/40 p-2.5 rounded-2xl border-2 border-slate-800/80" id="seat-wrapper-${i}">
-                        <select id="setup-player-select-${i}" class="flex-1 bg-slate-900 border-2 border-slate-700/50 rounded-xl px-4 py-4 text-slate-100 focus:outline-none focus:border-rose-500 text-lg font-bold cursor-pointer h-14">`;
+                        <select id="setup-player-select-${i}" class="flex-1 bg-slate-900 border-2 border-slate-700/50 rounded-xl px-4 py-4 text-slate-100 focus:outline-none focus:border-rose-500 text-lg font-bold cursor-pointer h-16 leading-normal">`;
 
                 dbPlayers.forEach((p) => {
                     const isSelected = (p.id === selectedVal) ? 'selected' : '';
@@ -699,7 +699,7 @@ async function checkNewPlayer(selectElement, seatIndex) {
 
                 if (activePlayerCount > 3) {
                     dropdownHtml += `
-                        <button type="button" onclick="removePlayerSeat(${i})" class="p-3 text-rose-400 hover:text-rose-300 bg-[var(--surface)] hover:bg-[var(--accent-soft)] rounded-xl border-2 border-rose-500/10 hover:border-rose-500/30 transition-all flex items-center justify-center h-14 w-14" title="Remove Player Seat">
+                        <button type="button" onclick="removePlayerSeat(${i})" class="p-3 text-rose-400 hover:text-rose-300 bg-[var(--surface)] hover:bg-[var(--accent-soft)] rounded-xl border-2 border-rose-500/10 hover:border-rose-500/30 transition-all flex items-center justify-center h-16 w-16" title="Remove Player Seat">
                             <span class="text-xl font-bold">✕</span>
                         </button>`;
                 }
