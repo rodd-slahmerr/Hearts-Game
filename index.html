@@ -501,13 +501,17 @@
             Object.keys(THEME_META).forEach((key) => {
                 const meta = THEME_META[key];
                 const isActive = key === current;
-                const swatchHtml = key === 'ranch'
+                const isRanch = key === 'ranch';
+                const swatchHtml = isRanch
                     ? `<span class="w-8 h-8 rounded-full flex-shrink-0 overflow-hidden">${BARN_ICON}</span>`
                     : `<span class="w-8 h-8 rounded-full flex-shrink-0" style="background:${meta.swatch}"></span>`;
+                const labelHtml = isRanch
+                    ? ''
+                    : `<span class="flex-1 min-w-0 font-bold text-white">${meta.label}${isActive ? ' &middot; current' : ''}</span>`;
                 optionsHtml += `
-                    <button onclick="setTheme('${key}')" class="w-full flex items-center gap-3 text-left p-4 rounded-2xl border-2 transition-colors ${isActive ? 'border-[var(--accent)] bg-[var(--accent-soft)]' : 'border-slate-700/50 hover:bg-slate-700/50'}">
+                    <button onclick="setTheme('${key}')" aria-label="${meta.label}${isActive ? ' (current)' : ''}" class="w-full flex items-center gap-3 text-left p-4 rounded-2xl border-2 transition-colors ${isActive ? 'border-[var(--accent)] bg-[var(--accent-soft)]' : 'border-slate-700/50 hover:bg-slate-700/50'}">
                         ${swatchHtml}
-                        <span class="flex-1 min-w-0 font-bold text-white">${meta.label}${isActive ? ' &middot; current' : ''}</span>
+                        ${labelHtml}
                     </button>`;
             });
 
