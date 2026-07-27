@@ -381,9 +381,6 @@
         </div>
     </div>
 
-    <!-- FIXED SLIM GLOWING CONNECTION BAR AT BOTTOM -->
-    <div id="status-bar" class="fixed bottom-0 left-0 right-0 h-[4px] bg-slate-800 transition-all duration-500 animate-pulse" title="Cloud Sync Status Indicator"></div>
-
     <script>
         // Register service worker for offline/installable support
         if ('serviceWorker' in navigator) {
@@ -597,38 +594,24 @@
 
         // Pull active directory from Sheets database
         async function fetchPlayersFromSheet() {
-            const bar = document.getElementById('status-bar');
-            
             if (!WEB_APP_URL || WEB_APP_URL.includes("YOUR_GOOGLE_APPS_SCRIPT_WEB_APP")) {
                 console.log("Using default fallback players. Replace WEB_APP_URL to sync live.");
                 dbPlayers = [...fallbackPlayers];
-                
-                // Set status bar to static amber indicator
-                bar.className = "fixed bottom-0 left-0 right-0 h-[4px] bg-amber-500 shadow-[0_-4px_10px_rgba(245,158,11,0.5)] transition-all duration-500";
-                bar.title = "Offline (using default fallback players)";
                 return;
             }
 
             try {
                 const response = await fetch(WEB_APP_URL);
                 const result = await response.json();
-                
+
                 if (result.status === "success" && result.players && result.players.length > 0) {
                     dbPlayers = result.players;
-                    
-                    // Set status bar to glowing emerald indicator
-                    bar.className = "fixed bottom-0 left-0 right-0 h-[4px] bg-emerald-500 shadow-[0_-4px_10px_rgba(16,185,129,0.5)] transition-all duration-500";
-                    bar.title = "Live cloud database sync connected";
                 } else {
                     throw new Error("Invalid format returned");
                 }
             } catch (error) {
                 console.warn("Failed to query live Google Sheet database, falling back.", error);
                 dbPlayers = [...fallbackPlayers];
-                
-                // Set status bar to static amber indicator
-                bar.className = "fixed bottom-0 left-0 right-0 h-[4px] bg-amber-500 shadow-[0_-4px_10px_rgba(245,158,11,0.5)] transition-all duration-500";
-                bar.title = "Offline (failed to query live database, fallback active)";
             }
         }
 
