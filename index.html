@@ -228,17 +228,6 @@
         <button onclick="startGame()" class="w-full bg-[var(--accent)] hover:opacity-90 text-[var(--on-accent)] font-extrabold py-5 px-6 rounded-3xl shadow-lg active:scale-[0.98] transition-all text-center text-xl tracking-wide">
             Begin Game
         </button>
-
-        <!-- RESUME BANNER: shown only when unfinished games are saved locally -->
-        <div id="resume-banner" class="hidden bg-amber-500/10 border border-amber-500/20 rounded-2xl p-4 flex items-center justify-between gap-3">
-            <div class="min-w-0">
-                <div class="text-sm font-bold text-amber-400">Games in progress</div>
-                <div class="text-xs text-slate-400" id="resume-banner-sub">You have unfinished games.</div>
-            </div>
-            <button onclick="openResumeView()" class="text-xs font-black text-amber-400 hover:text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 px-3 py-2 rounded-xl transition-all active:scale-95 flex-shrink-0">
-                Resume
-            </button>
-        </div>
     </div>
 
     <!-- ACTIVE GAME VIEW -->
@@ -392,19 +381,8 @@
         </div>
     </div>
 
-    <!-- RESUME GAME VIEW -->
-    <div id="resume-view" class="hidden max-w-md mx-auto px-4 pt-8 pb-16 space-y-6">
-        <div class="flex items-center space-x-3">
-            <button onclick="closeResumeView()" class="text-slate-300 hover:text-white bg-slate-800/80 hover:bg-slate-800 border border-slate-700/50 px-3 py-2 rounded-xl transition-all active:scale-95">
-                ← Back
-            </button>
-            <h1 class="font-display text-2xl font-extrabold tracking-tight text-[var(--accent)]" style="letter-spacing: var(--word-tracking); text-transform: var(--word-case);">Resume a Game</h1>
-        </div>
-
-        <div id="resume-list" class="space-y-3">
-            <!-- Rendered dynamically by JavaScript -->
-        </div>
-    </div>
+    <!-- FIXED SLIM GLOWING CONNECTION BAR AT BOTTOM -->
+    <div id="status-bar" class="fixed bottom-0 left-0 right-0 h-[4px] bg-slate-800 transition-all duration-500 animate-pulse" title="Cloud Sync Status Indicator"></div>
 
     <script>
         // Register service worker for offline/installable support
@@ -440,25 +418,9 @@
         let currentTournament = "None";
         let currentCancellationRules = false;
 
-        // In-progress game persistence (survives tab reloads/kills).
-        // Keeps up to MAX_SESSIONS unfinished games so a player can pick which
-        // one to resume, not just the single most recent.
-        const SESSIONS_KEY = "hearts_game_sessions_v1";
-        const MAX_SESSIONS = 5;
+        // In-progress game persistence (survives tab reloads/kills)
+        const ACTIVE_GAME_KEY = "hearts_active_game_v1";
         let pendingResumeState = null;
-
-        function getSessions() {
-            try {
-                const list = JSON.parse(localStorage.getItem(SESSIONS_KEY));
-                return Array.isArray(list) ? list : [];
-            } catch (err) {
-                return [];
-            }
-        }
-
-        function persistSessions(list) {
-            localStorage.setItem(SESSIONS_KEY, JSON.stringify(list));
-        }
 
         function saveActiveGameState() {
             const state = {
@@ -469,109 +431,13 @@
                 selectedPlayerIds,
                 activePlayerCount,
                 currentTournament,
-                currentCancellationRules,
-                lastUpdated: Date.now()
+                currentCancellationRules
             };
-            const sessions = getSessions().filter((s) => s.currentGameId !== currentGameId);
-            sessions.unshift(state);
-            persistSessions(sessions.slice(0, MAX_SESSIONS));
+            localStorage.setItem(ACTIVE_GAME_KEY, JSON.stringify(state));
         }
 
-        function removeGameSession(gameId) {
-            persistSessions(getSessions().filter((s) => s.currentGameId !== gameId));
-        }
-
-        // One-time migration from the older single-slot storage key so an
-        // in-progress game from before this feature isn't silently dropped.
-        function migrateLegacyActiveGame() {
-            const LEGACY_KEY = "hearts_active_game_v1";
-            try {
-                const raw = localStorage.getItem(LEGACY_KEY);
-                if (raw) {
-                    const state = JSON.parse(raw);
-                    if (state && state.currentGameId) {
-                        state.lastUpdated = Date.now();
-                        const sessions = getSessions().filter((s) => s.currentGameId !== state.currentGameId);
-                        sessions.unshift(state);
-                        persistSessions(sessions.slice(0, MAX_SESSIONS));
-                    }
-                }
-            } catch (err) { /* ignore corrupt legacy data */ }
-            localStorage.removeItem(LEGACY_KEY);
-        }
-
-        function formatRelativeTime(ts) {
-            const mins = Math.round((Date.now() - ts) / 60000);
-            if (mins < 1) return "just now";
-            if (mins < 60) return `${mins} min${mins === 1 ? '' : 's'} ago`;
-            const hours = Math.round(mins / 60);
-            if (hours < 24) return `${hours} hour${hours === 1 ? '' : 's'} ago`;
-            const days = Math.round(hours / 24);
-            if (days < 7) return `${days} day${days === 1 ? '' : 's'} ago`;
-            return new Date(ts).toLocaleDateString();
-        }
-
-        function renderResumeBanner() {
-            const banner = document.getElementById('resume-banner');
-            const sub = document.getElementById('resume-banner-sub');
-            const count = getSessions().length;
-            if (count === 0) {
-                banner.classList.add('hidden');
-                return;
-            }
-            banner.classList.remove('hidden');
-            sub.textContent = count === 1 ? "You have 1 unfinished game." : `You have ${count} unfinished games.`;
-        }
-
-        function openResumeView() {
-            document.getElementById('setup-view').classList.add('hidden');
-            document.getElementById('resume-view').classList.remove('hidden');
-            renderResumeList();
-        }
-
-        function closeResumeView() {
-            document.getElementById('resume-view').classList.add('hidden');
-            document.getElementById('setup-view').classList.remove('hidden');
-            renderResumeBanner();
-        }
-
-        function renderResumeList() {
-            const container = document.getElementById('resume-list');
-            const sessions = getSessions();
-
-            if (sessions.length === 0) {
-                container.innerHTML = `<div class="text-sm text-slate-500 italic text-center py-10">No games in progress.</div>`;
-                return;
-            }
-
-            container.innerHTML = '';
-            sessions.forEach((s) => {
-                const playerNames = s.selectedPlayerIds.slice(0, s.activePlayerCount).map(getPlayerDisplayName).join(', ');
-                const label = (s.currentTournament && s.currentTournament !== "None") ? s.currentTournament : "Casual Match";
-                container.innerHTML += `
-                    <div class="bg-slate-800/80 backdrop-blur-md rounded-3xl p-5 border border-slate-700/50 shadow-xl">
-                        <div class="flex items-start justify-between gap-3 mb-3">
-                            <div class="min-w-0">
-                                <div class="font-bold text-white truncate">${label}</div>
-                                <div class="text-xs text-slate-500 truncate">${playerNames}</div>
-                            </div>
-                            <button onclick="deleteSession('${s.currentGameId}')" aria-label="Remove saved game" class="text-slate-500 hover:text-rose-400 text-lg leading-none flex-shrink-0 px-1">&times;</button>
-                        </div>
-                        <div class="flex items-center justify-between">
-                            <span class="text-xs text-slate-400">Round ${s.currentRoundNumber} &middot; ${formatRelativeTime(s.lastUpdated)}</span>
-                            <button onclick="resumeSessionFromList('${s.currentGameId}')" class="text-xs font-black text-[var(--on-accent)] bg-[var(--accent)] hover:opacity-90 px-4 py-2 rounded-xl transition-all active:scale-95">
-                                Resume
-                            </button>
-                        </div>
-                    </div>`;
-            });
-        }
-
-        function deleteSession(gameId) {
-            removeGameSession(gameId);
-            renderResumeList();
-            renderResumeBanner();
-            showToast("Removed saved game");
+        function clearActiveGameState() {
+            localStorage.removeItem(ACTIVE_GAME_KEY);
         }
 
         function promptResumeGame(state) {
@@ -593,15 +459,15 @@
         }
 
         function discardSavedGame() {
-            if (pendingResumeState) removeGameSession(pendingResumeState.currentGameId);
+            clearActiveGameState();
             pendingResumeState = null;
             document.getElementById('resume-game-modal').remove();
-            renderResumeBanner();
         }
 
-        // Loads a saved session's data into the live game globals and UI.
-        // Shared by the on-load "resume?" prompt and the resume list screen.
-        function applyResumeState(state) {
+        function resumeSavedGame() {
+            const state = pendingResumeState;
+            if (!state) return;
+
             currentGameId = state.currentGameId;
             currentRoundNumber = state.currentRoundNumber;
             runningTotals = state.runningTotals;
@@ -610,6 +476,11 @@
             activePlayerCount = state.activePlayerCount;
             currentTournament = state.currentTournament;
             currentCancellationRules = state.currentCancellationRules;
+            pendingResumeState = null;
+
+            document.getElementById('resume-game-modal').remove();
+            document.getElementById('setup-view').classList.add('hidden');
+            document.getElementById('game-view').classList.remove('hidden');
 
             document.getElementById('game-id-display').textContent = `Game ID: ${currentGameId.substring(2, 10)}`;
             const badge = document.getElementById('badge-tournament');
@@ -626,29 +497,6 @@
             }
             buildRoundInputFields();
             updateHistoryUI();
-        }
-
-        function resumeSavedGame() {
-            const state = pendingResumeState;
-            if (!state) return;
-            pendingResumeState = null;
-
-            applyResumeState(state);
-
-            document.getElementById('resume-game-modal').remove();
-            document.getElementById('setup-view').classList.add('hidden');
-            document.getElementById('game-view').classList.remove('hidden');
-            showToast("Resumed your game in progress");
-        }
-
-        function resumeSessionFromList(gameId) {
-            const state = getSessions().find((s) => s.currentGameId === gameId);
-            if (!state) return;
-
-            applyResumeState(state);
-
-            document.getElementById('resume-view').classList.add('hidden');
-            document.getElementById('game-view').classList.remove('hidden');
             showToast("Resumed your game in progress");
         }
 
@@ -734,34 +582,53 @@
             await fetchPlayersFromSheet();
             renderPlayerSeats(); // Trigger initial seat generation
 
-            migrateLegacyActiveGame();
-            const sessions = getSessions();
-            if (sessions.length > 0) {
-                promptResumeGame(sessions[0]);
+            const saved = localStorage.getItem(ACTIVE_GAME_KEY);
+            if (saved) {
+                try {
+                    const state = JSON.parse(saved);
+                    if (state && state.currentGameId) {
+                        promptResumeGame(state);
+                    }
+                } catch (err) {
+                    localStorage.removeItem(ACTIVE_GAME_KEY);
+                }
             }
-            renderResumeBanner();
         });
 
         // Pull active directory from Sheets database
         async function fetchPlayersFromSheet() {
+            const bar = document.getElementById('status-bar');
+            
             if (!WEB_APP_URL || WEB_APP_URL.includes("YOUR_GOOGLE_APPS_SCRIPT_WEB_APP")) {
                 console.log("Using default fallback players. Replace WEB_APP_URL to sync live.");
                 dbPlayers = [...fallbackPlayers];
+                
+                // Set status bar to static amber indicator
+                bar.className = "fixed bottom-0 left-0 right-0 h-[4px] bg-amber-500 shadow-[0_-4px_10px_rgba(245,158,11,0.5)] transition-all duration-500";
+                bar.title = "Offline (using default fallback players)";
                 return;
             }
 
             try {
                 const response = await fetch(WEB_APP_URL);
                 const result = await response.json();
-
+                
                 if (result.status === "success" && result.players && result.players.length > 0) {
                     dbPlayers = result.players;
+                    
+                    // Set status bar to glowing emerald indicator
+                    bar.className = "fixed bottom-0 left-0 right-0 h-[4px] bg-emerald-500 shadow-[0_-4px_10px_rgba(16,185,129,0.5)] transition-all duration-500";
+                    bar.title = "Live cloud database sync connected";
                 } else {
                     throw new Error("Invalid format returned");
                 }
             } catch (error) {
                 console.warn("Failed to query live Google Sheet database, falling back.", error);
                 dbPlayers = [...fallbackPlayers];
+                
+                // Set status bar to static amber indicator
+                bar.className = "fixed bottom-0 left-0 right-0 h-[4px] bg-amber-500 shadow-[0_-4px_10px_rgba(245,158,11,0.5)] transition-all duration-500";
+                bar.title = "Offline (failed to query live database, fallback active)";
             }
         }
 
@@ -1240,7 +1107,7 @@ async function checkNewPlayer(selectElement, seatIndex) {
         }
 
         function endActiveGame() {
-            removeGameSession(currentGameId);
+            clearActiveGameState();
             document.getElementById('game-view').classList.add('hidden');
             document.getElementById('gameover-view').classList.remove('hidden');
 
@@ -1282,11 +1149,10 @@ async function checkNewPlayer(selectElement, seatIndex) {
 
         // Cleaned up helper to refresh/return state
         function resetToSetup() {
-            if (currentGameId) removeGameSession(currentGameId);
+            clearActiveGameState();
             document.getElementById('gameover-view').classList.add('hidden');
             document.getElementById('game-view').classList.add('hidden');
             document.getElementById('setup-view').classList.remove('hidden');
-            renderResumeBanner();
         }
 
         // ── Stats & Records screen ──────────────────────────────────────
