@@ -319,19 +319,58 @@
         <div id="stats-error" class="hidden text-center text-rose-400 text-sm py-10"></div>
 
         <div id="stats-content" class="hidden space-y-6">
-            <!-- Best game ever -->
-            <div class="bg-slate-800/80 backdrop-blur-md rounded-3xl p-6 border border-slate-700/50 shadow-xl text-center" id="stats-best-game">
+            <div id="stats-legacy-note" class="hidden bg-amber-500/10 border border-amber-500/20 rounded-2xl p-4 text-sm text-amber-400">
+                Showing basic stats only. Update the Apps Script deployment to unlock the full dashboard.
             </div>
 
-            <!-- Total games played -->
-            <div class="text-center text-sm text-slate-400">
-                <span id="stats-total-games" class="font-display font-black text-white text-lg">0</span> games played all-time
-            </div>
+            <!-- Headline numbers -->
+            <div id="stats-summary" class="grid grid-cols-3 gap-3"></div>
 
             <!-- Leaderboard -->
             <div class="bg-slate-800/80 backdrop-blur-md rounded-3xl p-6 border border-slate-700/50 shadow-xl">
                 <label class="block text-sm font-bold text-slate-300 uppercase tracking-wider border-b border-slate-700/40 pb-3 mb-2">Leaderboard</label>
+                <p id="stats-leaderboard-note" class="text-xs text-slate-500 mb-1"></p>
                 <div id="stats-leaderboard" class="divide-y divide-slate-800">
+                </div>
+            </div>
+
+            <!-- Player card -->
+            <div class="stats-full bg-slate-800/80 backdrop-blur-md rounded-3xl p-6 border border-slate-700/50 shadow-xl space-y-4">
+                <div class="flex items-center justify-between gap-3 border-b border-slate-700/40 pb-3">
+                    <label for="stats-player-select" class="text-sm font-bold text-slate-300 uppercase tracking-wider">Player</label>
+                    <select id="stats-player-select" onchange="renderPlayerCard()" class="min-w-0 max-w-[60%] bg-slate-900 border-2 border-slate-700/50 rounded-xl px-3 py-2 text-slate-100 font-bold focus:outline-none focus:border-rose-500 cursor-pointer"></select>
+                </div>
+                <div id="stats-player-detail"></div>
+            </div>
+
+            <!-- Records -->
+            <div class="stats-full bg-slate-800/80 backdrop-blur-md rounded-3xl p-6 border border-slate-700/50 shadow-xl">
+                <label class="block text-sm font-bold text-slate-300 uppercase tracking-wider border-b border-slate-700/40 pb-3 mb-1">Records</label>
+                <p class="text-xs text-slate-500 mb-1">From games played until someone reached 100.</p>
+                <div id="stats-records" class="divide-y divide-slate-800"></div>
+            </div>
+
+            <!-- Head-to-head -->
+            <div class="stats-full bg-slate-800/80 backdrop-blur-md rounded-3xl p-6 border border-slate-700/50 shadow-xl space-y-4">
+                <label class="block text-sm font-bold text-slate-300 uppercase tracking-wider border-b border-slate-700/40 pb-3">Head-to-Head</label>
+                <div class="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+                    <select id="stats-h2h-a" onchange="renderHeadToHead()" aria-label="First player" class="min-w-0 bg-slate-900 border-2 border-slate-700/50 rounded-xl px-2 py-2 text-slate-100 font-bold focus:outline-none focus:border-rose-500 cursor-pointer"></select>
+                    <span class="text-xs font-bold text-slate-500 uppercase">vs</span>
+                    <select id="stats-h2h-b" onchange="renderHeadToHead()" aria-label="Second player" class="min-w-0 bg-slate-900 border-2 border-slate-700/50 rounded-xl px-2 py-2 text-slate-100 font-bold focus:outline-none focus:border-rose-500 cursor-pointer"></select>
+                </div>
+                <div id="stats-h2h"></div>
+            </div>
+
+            <!-- Trends -->
+            <div class="stats-full bg-slate-800/80 backdrop-blur-md rounded-3xl p-6 border border-slate-700/50 shadow-xl space-y-5">
+                <label class="block text-sm font-bold text-slate-300 uppercase tracking-wider border-b border-slate-700/40 pb-3">Trends</label>
+                <div>
+                    <div class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Games per month</div>
+                    <div id="stats-monthly"></div>
+                </div>
+                <div>
+                    <div class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Standard vs. Cancellation</div>
+                    <div id="stats-modes"></div>
                 </div>
             </div>
 
@@ -1020,7 +1059,8 @@ async function checkNewPlayer(selectElement, seatIndex) {
             if (roundLogs.length === 0) return;
 
             const poppedScores = roundLogs.pop();
-            
+            deleteRoundFromCloud(currentRoundNumber - 1); // the number it was sent with
+
             for (let i = 0; i < activePlayerCount; i++) {
                 runningTotals[i] -= poppedScores[i];
                 document.getElementById(`run-tot-${i}`).textContent = runningTotals[i];
@@ -1033,6 +1073,45 @@ async function checkNewPlayer(selectElement, seatIndex) {
             saveActiveGameState();
 
             showToast(`Rolled back Round ${currentRoundNumber}!`);
+        }
+
+        // Removes an undone round's rows from the Scores sheet
+        async function deleteRoundFromCloud(roundNum) {
+            if (!WEB_APP_URL || WEB_APP_URL.includes("YOUR_GOOGLE_APPS_SCRIPT_WEB_APP")) return;
+            try {
+                await fetch(WEB_APP_URL, {
+                    method: "POST",
+                    mode: "no-cors",
+                    body: JSON.stringify({
+                        action: "deleteRound",
+                        Game_ID: currentGameId,
+                        Round_Number: roundNum,
+                        Before: new Date().toISOString()
+                    })
+                });
+            } catch (error) {
+                console.error("Cloud undo error:", error);
+            }
+        }
+
+        // Marks the game finished in the Games sheet, so Stats can tell it
+        // apart from an abandoned one
+        async function recordGameEnd(reason) {
+            if (!WEB_APP_URL || WEB_APP_URL.includes("YOUR_GOOGLE_APPS_SCRIPT_WEB_APP")) return;
+            try {
+                await fetch(WEB_APP_URL, {
+                    method: "POST",
+                    mode: "no-cors",
+                    body: JSON.stringify({
+                        action: "endGame",
+                        Game_ID: currentGameId,
+                        Ended_At: new Date().toISOString(),
+                        Reason: reason
+                    })
+                });
+            } catch (error) {
+                console.error("Cloud game-end error:", error);
+            }
         }
 
         function updateHistoryUI() {
@@ -1105,6 +1184,7 @@ async function checkNewPlayer(selectElement, seatIndex) {
         }
 
         function endActiveGame() {
+            recordGameEnd(Math.max(...runningTotals) >= 100 ? "Reached 100" : "Ended early");
             clearActiveGameState();
             document.getElementById('game-view').classList.add('hidden');
             document.getElementById('gameover-view').classList.remove('hidden');
@@ -1193,11 +1273,21 @@ async function checkNewPlayer(selectElement, seatIndex) {
             }
 
             try {
-                const response = await fetch(`${WEB_APP_URL}?action=getStats`);
+                const response = await fetch(`${WEB_APP_URL}?action=getHistory`);
                 const result = await response.json();
                 if (result.status !== "success") throw new Error("Bad response");
 
-                renderStats(result);
+                if (Array.isArray(result.rows)) {
+                    statsModel = buildStatsModel(result.players, result.rows, result.completions);
+                    renderStats(statsModel);
+                } else {
+                    // Deployed Apps Script predates getHistory (unknown actions fall
+                    // back to the player list), so use the old aggregate endpoint.
+                    const legacyResponse = await fetch(`${WEB_APP_URL}?action=getStats`);
+                    const legacy = await legacyResponse.json();
+                    if (legacy.status !== "success") throw new Error("Bad response");
+                    renderLegacyStats(legacy);
+                }
                 loadingEl.classList.add('hidden');
                 contentEl.classList.remove('hidden');
             } catch (error) {
@@ -1208,62 +1298,540 @@ async function checkNewPlayer(selectElement, seatIndex) {
             }
         }
 
-        function renderStats(result) {
-            document.getElementById('stats-total-games').textContent = result.totalGames;
+        // Players need this many games before they're ranked on the leaderboard
+        const STATS_MIN_GAMES = 3;
+        let statsModel = null;
 
-            const bestGameEl = document.getElementById('stats-best-game');
-            if (result.bestGameEver) {
-                const bg = result.bestGameEver;
-                bestGameEl.innerHTML = `
-                    <span class="text-4xl inline-block mb-2">🏆</span>
-                    <div class="text-xs font-bold text-slate-400 uppercase tracking-wider">Best Game Ever</div>
-                    <div class="font-display text-2xl font-black text-amber-400 mt-1">${bg.playerName}</div>
-                    <div class="text-sm text-slate-400 mt-1">${bg.score} pts &middot; ${new Date(bg.timestamp).toLocaleDateString()}</div>`;
-            } else {
-                bestGameEl.innerHTML = `<div class="text-sm text-slate-500 italic">No completed games yet.</div>`;
-            }
-
-            const leaderboardEl = document.getElementById('stats-leaderboard');
-            leaderboardEl.innerHTML = '';
-            if (!result.leaderboard || result.leaderboard.length === 0) {
-                leaderboardEl.innerHTML = `<div class="text-sm text-slate-500 italic text-center py-4">No games recorded yet.</div>`;
-            } else {
-                result.leaderboard.forEach((p, idx) => {
-                    const badgeClass = idx === 0 ? "bg-amber-500/20 text-amber-400" : "bg-slate-800 text-slate-400";
-                    leaderboardEl.innerHTML += `
-                        <div class="flex items-center justify-between py-3">
-                            <div class="flex items-center space-x-3">
-                                <span class="w-7 h-7 flex items-center justify-center rounded-lg text-xs font-bold ${badgeClass}">${idx + 1}</span>
-                                <div>
-                                    <div class="font-bold text-white">${p.name}</div>
-                                    <div class="text-xs text-slate-500">${p.gamesPlayed} games &middot; best ${p.bestScore}</div>
-                                </div>
-                            </div>
-                            <div class="text-right">
-                                <div class="font-black text-emerald-400">${p.wins} wins</div>
-                                <div class="text-xs text-slate-500">${Math.round(p.winRate * 100)}% win rate</div>
-                            </div>
-                        </div>`;
-                });
-            }
-
-            const recentEl = document.getElementById('stats-recent-games');
-            recentEl.innerHTML = '';
-            if (!result.recentGames || result.recentGames.length === 0) {
-                recentEl.innerHTML = `<div class="text-sm text-slate-500 italic text-center py-4">No games recorded yet.</div>`;
-            } else {
-                result.recentGames.forEach((g) => {
-                    recentEl.innerHTML += `
-                        <div class="flex items-center justify-between py-2.5">
-                            <div>
-                                <div class="text-sm font-bold text-white">${g.winnerName}</div>
-                                <div class="text-xs text-slate-500">${new Date(g.timestamp).toLocaleDateString()}</div>
-                            </div>
-                            <span class="text-sm font-bold text-rose-400">${g.winnerScore} pts</span>
-                        </div>`;
-                });
-            }
+        function escapeHtml(value) {
+            return String(value).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
         }
+
+        function formatStatDate(time) {
+            return time ? new Date(time).toLocaleDateString() : '';
+        }
+
+        // Turns raw Scores rows into games and per-player stats. `completions`
+        // lists finished games from the Games sheet (absent on older Apps
+        // Script deployments).
+        function buildStatsModel(players, rows, completions) {
+            const names = {};
+            (players || []).forEach((p) => { names[p.id] = p.name; });
+            const nameOf = (id) => names[id] || id;
+
+            // Undo now deletes its rows from the sheet, but older undos (or a
+            // failed delete) can leave a round stored twice. Keep only the latest
+            // entry per game/round/player.
+            const latest = {};
+            rows.forEach((row) => {
+                const [gameId, round, timestamp, playerId, , cancellation, score] = row;
+                if (!gameId || !playerId) return;
+                const key = `${gameId}|${round}|${playerId}`;
+                const time = new Date(timestamp).getTime() || 0;
+                if (!latest[key] || time >= latest[key].time) {
+                    latest[key] = {
+                        gameId: String(gameId),
+                        round: Number(round) || 0,
+                        time,
+                        playerId: String(playerId),
+                        cancellation: cancellation === true || String(cancellation).toUpperCase() === 'TRUE',
+                        score: Number(score) || 0
+                    };
+                }
+            });
+
+            const gamesById = {};
+            Object.values(latest).forEach((e) => {
+                const g = gamesById[e.gameId] || (gamesById[e.gameId] = { id: e.gameId, rounds: {}, playerIds: new Set(), cancellation: false, lastTime: 0 });
+                (g.rounds[e.round] || (g.rounds[e.round] = {}))[e.playerId] = e.score;
+                g.playerIds.add(e.playerId);
+                if (e.cancellation) g.cancellation = true;
+                g.lastTime = Math.max(g.lastTime, e.time);
+            });
+
+            const completed = new Set((completions || []).map((c) => String(c.gameId)));
+            // Games started before the first recorded completion predate the
+            // Games sheet; for those, fall back to "someone reached 100".
+            const recordedSince = Math.min(...Object.keys(gamesById)
+                .filter((id) => completed.has(id))
+                .map((id) => Number(id.replace(/^g_/, '')) || Infinity));
+
+            const allGames = Object.values(gamesById).map((g) => {
+                const playerIds = Array.from(g.playerIds);
+                const rounds = Object.keys(g.rounds).map(Number).sort((a, b) => a - b).map((r) => g.rounds[r]);
+                const totals = {};
+                playerIds.forEach((id) => { totals[id] = 0; });
+
+                // Track each player's worst deficit to the leader, for comebacks
+                const maxDeficit = {};
+                playerIds.forEach((id) => { maxDeficit[id] = 0; });
+                rounds.forEach((scores) => {
+                    playerIds.forEach((id) => { totals[id] += scores[id] || 0; });
+                    const leader = Math.min(...playerIds.map((id) => totals[id]));
+                    playerIds.forEach((id) => { maxDeficit[id] = Math.max(maxDeficit[id], totals[id] - leader); });
+                });
+
+                const sorted = playerIds.map((id) => totals[id]).sort((a, b) => a - b);
+                const low = sorted[0];
+                const high = sorted[sorted.length - 1];
+                // Game IDs are "g_<start time in ms>"
+                const started = Number(g.id.replace(/^g_/, '')) || g.lastTime;
+
+                return {
+                    id: g.id,
+                    time: started,
+                    cancellation: g.cancellation,
+                    playerIds,
+                    rounds,
+                    totals,
+                    maxDeficit,
+                    winners: playerIds.filter((id) => totals[id] === low),
+                    lastPlace: high > low ? playerIds.filter((id) => totals[id] === high) : [],
+                    winningScore: low,
+                    margin: sorted.length > 1 ? sorted[1] - low : 0,
+                    spread: high - low,
+                    finished: completed.has(g.id) || (started < recordedSince && high >= 100)
+                };
+            }).sort((a, b) => a.time - b.time);
+
+            // Abandoned and in-progress games don't count toward wins, the
+            // leaderboard or records; their rounds still count as rounds played.
+            const games = allGames.filter((g) => g.finished);
+
+            const statsById = {};
+            const ensure = (id) => statsById[id] || (statsById[id] = {
+                id, name: nameOf(id), games: 0, wins: 0, lastPlaces: 0, finalTotal: 0, best: null, worst: null,
+                rounds: 0, roundPoints: 0, moons: 0, clean: 0, rough: 0, biggestHit: 0,
+                longestStreak: 0, currentStreak: 0, history: []
+            });
+
+            let totalRounds = 0;
+            let totalMoons = 0;
+
+            games.forEach((game) => {
+                game.playerIds.forEach((id) => {
+                    const s = ensure(id);
+                    const total = game.totals[id];
+                    const won = game.winners.includes(id);
+                    s.games++;
+                    s.finalTotal += total;
+                    if (s.best === null || total < s.best) s.best = total;
+                    if (s.worst === null || total > s.worst) s.worst = total;
+                    if (won) {
+                        s.wins++;
+                        s.currentStreak++;
+                        s.longestStreak = Math.max(s.longestStreak, s.currentStreak);
+                    } else {
+                        s.currentStreak = 0;
+                    }
+                    if (game.lastPlace.includes(id)) s.lastPlaces++;
+                    s.history.push({ time: game.time, score: total, won });
+                });
+            });
+
+            allGames.forEach((game) => {
+                game.rounds.forEach((scores) => {
+                    totalRounds++;
+                    const ids = game.playerIds;
+                    const zeros = ids.filter((id) => (scores[id] || 0) === 0);
+                    const isMoon = ids.length > 1 && zeros.length === 1 && ids.every((id) => id === zeros[0] || scores[id] === 26);
+                    if (isMoon) totalMoons++;
+
+                    ids.forEach((id) => {
+                        const s = ensure(id);
+                        const pts = scores[id] || 0;
+                        s.rounds++;
+                        s.roundPoints += pts;
+                        if (isMoon) {
+                            if (id === zeros[0]) s.moons++;
+                            return; // moon rounds don't count as clean, rough or a big hit
+                        }
+                        if (pts === 0) s.clean++;
+                        if (pts >= 13) s.rough++;
+                        s.biggestHit = Math.max(s.biggestHit, pts);
+                    });
+                });
+            });
+
+            const playerStats = Object.values(statsById).map((s) => Object.assign(s, {
+                winRate: s.games ? s.wins / s.games : 0,
+                avgFinal: s.games ? s.finalTotal / s.games : 0,
+                avgRound: s.rounds ? s.roundPoints / s.rounds : 0
+            }));
+
+            return { games, players: playerStats, totalRounds, totalMoons, nameOf };
+        }
+
+        function statTile(value, label) {
+            return `
+                <div class="bg-slate-900/40 border border-slate-700/20 rounded-2xl p-3 text-center">
+                    <div class="font-display text-2xl font-black text-white">${value}</div>
+                    <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">${label}</div>
+                </div>`;
+        }
+
+        function renderStats(model) {
+            document.getElementById('stats-legacy-note').classList.add('hidden');
+            document.querySelectorAll('.stats-full').forEach((el) => el.classList.remove('hidden'));
+            document.getElementById('stats-summary').classList.remove('hidden');
+
+            document.getElementById('stats-summary').innerHTML =
+                statTile(model.games.length, 'Games') +
+                statTile(model.totalRounds, 'Rounds') +
+                statTile(model.totalMoons, 'Moon shots');
+
+            // Players whose only games were abandoned have no finished games to rank
+            renderLeaderboard(model.players.filter((p) => p.games > 0).map((p) => ({
+                name: p.name, games: p.games, wins: p.wins, winRate: p.winRate,
+                detail: `${p.games} games &middot; avg ${Math.round(p.avgFinal)}`
+            })));
+
+            // Player pickers, most active players first
+            const byGames = model.players.slice().sort((a, b) => b.games - a.games || a.name.localeCompare(b.name));
+            const options = byGames.map((p) => `<option value="${escapeHtml(p.id)}">${escapeHtml(p.name)}</option>`).join('');
+            const playerSelect = document.getElementById('stats-player-select');
+            const h2hA = document.getElementById('stats-h2h-a');
+            const h2hB = document.getElementById('stats-h2h-b');
+            const keep = [playerSelect.value, h2hA.value, h2hB.value];
+            [playerSelect, h2hA, h2hB].forEach((sel) => { sel.innerHTML = options; });
+            const has = (id) => byGames.some((p) => p.id === id);
+            playerSelect.value = has(keep[0]) ? keep[0] : (byGames[0] ? byGames[0].id : '');
+            h2hA.value = has(keep[1]) ? keep[1] : (byGames[0] ? byGames[0].id : '');
+            h2hB.value = has(keep[2]) ? keep[2] : (byGames[1] ? byGames[1].id : h2hA.value);
+
+            renderPlayerCard();
+            renderRecords(model);
+            renderHeadToHead();
+            renderMonthlyChart(model.games);
+            renderModeSplit(model);
+
+            renderRecentGames(model.games.slice().reverse().slice(0, 10).map((g) => ({
+                winner: g.winners.map(model.nameOf).join(' & '),
+                time: g.time,
+                score: g.winningScore
+            })));
+        }
+
+        // Old Apps Script deployments only return aggregates
+        function renderLegacyStats(result) {
+            statsModel = null;
+            document.getElementById('stats-legacy-note').classList.remove('hidden');
+            document.querySelectorAll('.stats-full').forEach((el) => el.classList.add('hidden'));
+            document.getElementById('stats-summary').classList.add('hidden');
+
+            renderLeaderboard((result.leaderboard || []).map((p) => ({
+                name: p.name, games: p.gamesPlayed, wins: p.wins, winRate: p.winRate,
+                detail: `${p.gamesPlayed} games &middot; best ${p.bestScore}`
+            })));
+            renderRecentGames((result.recentGames || []).map((g) => ({
+                winner: g.winnerName,
+                time: new Date(g.timestamp).getTime(),
+                score: g.winnerScore
+            })));
+        }
+
+        function renderLeaderboard(rows) {
+            const leaderboardEl = document.getElementById('stats-leaderboard');
+            document.getElementById('stats-leaderboard-note').textContent =
+                `Ranked by win rate. Players need ${STATS_MIN_GAMES}+ games to be ranked.`;
+
+            if (rows.length === 0) {
+                leaderboardEl.innerHTML = `<div class="text-sm text-slate-500 italic text-center py-4">No games recorded yet.</div>`;
+                return;
+            }
+
+            const ranked = rows.filter((p) => p.games >= STATS_MIN_GAMES)
+                .sort((a, b) => b.winRate - a.winRate || b.wins - a.wins);
+            const unranked = rows.filter((p) => p.games < STATS_MIN_GAMES)
+                .sort((a, b) => b.games - a.games || b.wins - a.wins);
+
+            const row = (p, rank) => {
+                const badgeClass = rank === 1 ? "bg-amber-500/20 text-amber-400" : "bg-slate-800 text-slate-400";
+                const badge = rank ? `<span class="w-7 h-7 flex-shrink-0 flex items-center justify-center rounded-lg text-xs font-bold ${badgeClass}">${rank}</span>`
+                    : `<span class="w-7 h-7 flex-shrink-0 flex items-center justify-center rounded-lg text-xs font-bold text-slate-500">&ndash;</span>`;
+                return `
+                    <div class="flex items-center justify-between py-3 gap-3">
+                        <div class="flex items-center space-x-3 min-w-0">
+                            ${badge}
+                            <div class="min-w-0">
+                                <div class="font-bold text-white truncate">${escapeHtml(p.name)}</div>
+                                <div class="text-xs text-slate-500">${p.detail}</div>
+                            </div>
+                        </div>
+                        <div class="text-right flex-shrink-0">
+                            <div class="font-black text-emerald-400">${Math.round(p.winRate * 100)}%</div>
+                            <div class="text-xs text-slate-500">${p.wins} ${p.wins === 1 ? 'win' : 'wins'}</div>
+                        </div>
+                    </div>`;
+            };
+
+            let html = ranked.map((p, i) => row(p, i + 1)).join('');
+            if (unranked.length) {
+                html += `<div class="pt-4 pb-1 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Fewer than ${STATS_MIN_GAMES} games</div>`;
+                html += unranked.map((p) => row(p, 0)).join('');
+            }
+            leaderboardEl.innerHTML = html;
+        }
+
+        function renderRecentGames(games) {
+            const recentEl = document.getElementById('stats-recent-games');
+            if (games.length === 0) {
+                recentEl.innerHTML = `<div class="text-sm text-slate-500 italic text-center py-4">No games recorded yet.</div>`;
+                return;
+            }
+            recentEl.innerHTML = games.map((g) => `
+                <div class="flex items-center justify-between py-2.5">
+                    <div>
+                        <div class="text-sm font-bold text-white">${escapeHtml(g.winner)}</div>
+                        <div class="text-xs text-slate-500">${formatStatDate(g.time)}</div>
+                    </div>
+                    <span class="text-sm font-bold text-rose-400">${g.score} pts</span>
+                </div>`).join('');
+        }
+
+        function renderPlayerCard() {
+            const el = document.getElementById('stats-player-detail');
+            if (!statsModel) return;
+            const id = document.getElementById('stats-player-select').value;
+            const p = statsModel.players.find((x) => x.id === id);
+            if (!p) {
+                el.innerHTML = `<div class="text-sm text-slate-500 italic text-center py-4">No games recorded yet.</div>`;
+                return;
+            }
+
+            const item = (label, value) => `
+                <div class="flex items-baseline justify-between py-2 gap-2">
+                    <span class="text-sm text-slate-400">${label}</span>
+                    <span class="font-display font-black text-white">${value}</span>
+                </div>`;
+
+            el.innerHTML = `
+                <div class="grid grid-cols-3 gap-3 mb-3">
+                    ${statTile(p.wins, p.wins === 1 ? 'Win' : 'Wins')}
+                    ${statTile(p.moons, p.moons === 1 ? 'Moon shot' : 'Moon shots')}
+                    ${statTile(p.lastPlaces, 'Last place')}
+                </div>
+                <div class="divide-y divide-slate-800">
+                    ${item('Average points per round', p.avgRound.toFixed(1))}
+                    ${item('Average final score', Math.round(p.avgFinal))}
+                    ${item('Best / worst game', `${p.best} / ${p.worst}`)}
+                    ${item('Clean rounds (0 pts)', p.clean)}
+                    ${item('Rough rounds (13+ pts)', p.rough)}
+                    ${item('Biggest single-round hit', p.biggestHit)}
+                    ${item('Longest win streak', p.longestStreak)}
+                    ${item('Current win streak', p.currentStreak)}
+                </div>
+                <div class="pt-4">
+                    <div class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Final scores, last ${Math.min(p.history.length, 15)} games</div>
+                    ${scoreTrendChart(p.history.slice(-15))}
+                </div>`;
+        }
+
+        // Line of a player's final scores, filled dots for wins. Tap a dot for details.
+        function scoreTrendChart(history) {
+            if (history.length < 2) {
+                return `<div class="text-sm text-slate-500 italic">Needs at least 2 games.</div>`;
+            }
+            const W = 320, H = 130, padL = 26, padR = 8, padT = 10, padB = 8;
+            const maxY = Math.max(100, ...history.map((h) => h.score));
+            const inset = 10; // keeps the first dot clear of the axis labels
+            const x = (i) => padL + inset + (i * (W - padL - inset - padR)) / (history.length - 1);
+            const y = (v) => padT + (1 - v / maxY) * (H - padT - padB);
+
+            const line = history.map((h, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(h.score).toFixed(1)}`).join(' ');
+            const dots = history.map((h, i) => {
+                const tip = `${formatStatDate(h.time)}: ${h.score} pts${h.won ? ', won' : ''}`;
+                return `
+                    <g class="stats-tip" data-tip="${escapeHtml(tip)}" style="cursor:pointer">
+                        <circle cx="${x(i)}" cy="${y(h.score)}" r="12" fill="transparent"/>
+                        <circle cx="${x(i)}" cy="${y(h.score)}" r="4.5" fill="${h.won ? 'var(--accent)' : 'var(--surface)'}" stroke="var(--accent)" stroke-width="2"/>
+                    </g>`;
+            }).join('');
+
+            return `
+                <svg viewBox="0 0 ${W} ${H}" class="w-full h-auto block" role="img" aria-label="Final score in each of the last ${history.length} games">
+                    <line x1="${padL}" x2="${W - padR}" y1="${y(100)}" y2="${y(100)}" stroke="var(--border)" stroke-dasharray="4 4"/>
+                    <text x="${padL - 4}" y="${y(100) + 4}" text-anchor="end" font-size="10" fill="var(--muted)">100</text>
+                    <line x1="${padL}" x2="${W - padR}" y1="${y(0)}" y2="${y(0)}" stroke="var(--border)"/>
+                    <text x="${padL - 4}" y="${y(0) + 4}" text-anchor="end" font-size="10" fill="var(--muted)">0</text>
+                    <path d="${line}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round"/>
+                    ${dots}
+                </svg>
+                <div class="stats-tip-readout text-xs text-slate-400 mt-1 min-h-[1rem]">Filled dots are wins. Tap a dot for details.</div>`;
+        }
+
+        function renderRecords(model) {
+            const el = document.getElementById('stats-records');
+            const finished = model.games.filter((g) => g.finished && g.playerIds.length > 1);
+            if (finished.length === 0) {
+                el.innerHTML = `<div class="text-sm text-slate-500 italic text-center py-4">No completed games yet.</div>`;
+                return;
+            }
+
+            const pick = (better) => finished.reduce((a, b) => (better(b, a) ? b : a));
+            const names = (ids) => ids.map((id) => escapeHtml(model.nameOf(id))).join(' & ');
+            const record = (title, who, detail, time) => `
+                <div class="py-3">
+                    <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">${title}</div>
+                    <div class="flex items-baseline justify-between gap-3 mt-0.5">
+                        <span class="font-bold text-white">${who}</span>
+                        <span class="text-xs text-slate-500 text-right flex-shrink-0">${formatStatDate(time)}</span>
+                    </div>
+                    <div class="text-sm text-slate-400">${detail}</div>
+                </div>`;
+
+            const best = pick((a, b) => a.winningScore < b.winningScore);
+            const closest = pick((a, b) => a.margin < b.margin);
+            const blowout = pick((a, b) => a.spread > b.spread);
+            const longest = pick((a, b) => a.rounds.length > b.rounds.length);
+            const comebackOf = (g) => Math.max(...g.winners.map((id) => g.maxDeficit[id]));
+            const comeback = pick((a, b) => comebackOf(a) > comebackOf(b));
+
+            let html = record('Best game ever', names(best.winners), `Won with ${best.winningScore} pts`, best.time);
+            html += record('Closest game', names(closest.winners),
+                closest.margin === 0 ? 'Tied for the win' : `Won by ${closest.margin} ${closest.margin === 1 ? 'pt' : 'pts'}`, closest.time);
+            html += record('Biggest blowout', names(blowout.winners), `${blowout.spread} pts ahead of last place`, blowout.time);
+            html += record('Longest game', names(longest.winners), `${longest.rounds.length} rounds`, longest.time);
+            if (comebackOf(comeback) > 0) {
+                html += record('Greatest comeback', names(comeback.winners), `Won after trailing by ${comebackOf(comeback)} pts`, comeback.time);
+            }
+            el.innerHTML = html;
+        }
+
+        function renderHeadToHead() {
+            const el = document.getElementById('stats-h2h');
+            if (!statsModel) return;
+            const a = document.getElementById('stats-h2h-a').value;
+            const b = document.getElementById('stats-h2h-b').value;
+            if (!a || !b || a === b) {
+                el.innerHTML = `<div class="text-sm text-slate-500 italic text-center py-2">Pick two different players.</div>`;
+                return;
+            }
+
+            let aAhead = 0, bAhead = 0, ties = 0;
+            statsModel.games.forEach((g) => {
+                if (!g.playerIds.includes(a) || !g.playerIds.includes(b)) return;
+                if (g.totals[a] < g.totals[b]) aAhead++;
+                else if (g.totals[b] < g.totals[a]) bAhead++;
+                else ties++;
+            });
+            const shared = aAhead + bAhead + ties;
+            if (shared === 0) {
+                el.innerHTML = `<div class="text-sm text-slate-500 italic text-center py-2">These two haven't played a game together yet.</div>`;
+                return;
+            }
+
+            const nameA = escapeHtml(statsModel.nameOf(a));
+            const nameB = escapeHtml(statsModel.nameOf(b));
+            const pctA = (aAhead / shared) * 100;
+            const pctTie = (ties / shared) * 100;
+            el.innerHTML = `
+                <div class="grid grid-cols-2 gap-3 mb-3">
+                    ${statTile(aAhead, `${nameA} ahead`)}
+                    ${statTile(bAhead, `${nameB} ahead`)}
+                </div>
+                <div class="flex h-2.5 rounded-full overflow-hidden gap-[2px]" role="img" aria-label="${nameA} finished ahead ${aAhead} times, ${nameB} ${bAhead} times, ${ties} ties">
+                    ${aAhead ? `<div style="width:${pctA}%;background:var(--accent)"></div>` : ''}
+                    ${ties ? `<div style="width:${pctTie}%;background:var(--border)"></div>` : ''}
+                    ${bAhead ? `<div style="flex:1;background:var(--accent2)"></div>` : ''}
+                </div>
+                <div class="text-xs text-slate-500 mt-2 text-center">${shared} ${shared === 1 ? 'game' : 'games'} together${ties ? `, ${ties} tied` : ''}</div>`;
+        }
+
+        function renderMonthlyChart(games) {
+            const el = document.getElementById('stats-monthly');
+            const now = new Date();
+            const months = [];
+            for (let i = 11; i >= 0; i--) {
+                const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+                months.push({ year: d.getFullYear(), month: d.getMonth(), count: 0, date: d });
+            }
+            games.forEach((g) => {
+                const d = new Date(g.time);
+                const m = months.find((x) => x.year === d.getFullYear() && x.month === d.getMonth());
+                if (m) m.count++;
+            });
+
+            const W = 320, H = 120, padB = 18, padT = 6, gap = 4;
+            const maxCount = Math.max(1, ...months.map((m) => m.count));
+            const barW = (W - gap * (months.length - 1)) / months.length;
+            const plotH = H - padB - padT;
+
+            const bars = months.map((m, i) => {
+                const x = i * (barW + gap);
+                const h = (m.count / maxCount) * plotH;
+                const yTop = H - padB - h;
+                const r = Math.min(4, h, barW / 2);
+                const label = m.date.toLocaleDateString(undefined, { month: 'short' });
+                const tip = `${m.date.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}: ${m.count} ${m.count === 1 ? 'game' : 'games'}`;
+                const bar = h > 0
+                    ? `<path d="M${x},${H - padB} V${yTop + r} Q${x},${yTop} ${x + r},${yTop} H${x + barW - r} Q${x + barW},${yTop} ${x + barW},${yTop + r} V${H - padB} Z" fill="var(--accent)"/>`
+                    : '';
+                return `
+                    <g class="stats-tip" data-tip="${escapeHtml(tip)}" style="cursor:pointer">
+                        <rect x="${x}" y="0" width="${barW}" height="${H}" fill="transparent"/>
+                        ${bar}
+                        <text x="${x + barW / 2}" y="${H - 4}" text-anchor="middle" font-size="9" fill="var(--muted)">${label.charAt(0)}</text>
+                    </g>`;
+            }).join('');
+
+            const busiest = months.reduce((a, b) => (b.count > a.count ? b : a));
+            el.innerHTML = `
+                <svg viewBox="0 0 ${W} ${H}" class="w-full h-auto block" role="img" aria-label="Games played in each of the last 12 months">
+                    <line x1="0" x2="${W}" y1="${H - padB}" y2="${H - padB}" stroke="var(--border)"/>
+                    ${bars}
+                </svg>
+                <div class="stats-tip-readout text-xs text-slate-400 mt-1 min-h-[1rem]">${busiest.count
+                    ? `Busiest: ${busiest.date.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })} (${busiest.count}). Tap a bar for details.`
+                    : 'No games in the last 12 months.'}</div>`;
+        }
+
+        function renderModeSplit(model) {
+            const el = document.getElementById('stats-modes');
+            const modes = [
+                { label: 'Standard', games: model.games.filter((g) => !g.cancellation) },
+                { label: 'Cancellation', games: model.games.filter((g) => g.cancellation) }
+            ];
+
+            const rows = modes.map((mode) => {
+                const finished = mode.games.filter((g) => g.finished);
+                const avgWin = finished.length ? Math.round(finished.reduce((s, g) => s + g.winningScore, 0) / finished.length) : '–';
+                const winCounts = {};
+                mode.games.forEach((g) => g.winners.forEach((id) => { winCounts[id] = (winCounts[id] || 0) + 1; }));
+                const topId = Object.keys(winCounts).sort((a, b) => winCounts[b] - winCounts[a])[0];
+                const top = topId ? `${escapeHtml(model.nameOf(topId))} (${winCounts[topId]})` : '–';
+                return `
+                    <tr>
+                        <td class="py-2 pr-2 font-bold text-white">${mode.label}</td>
+                        <td class="py-2 px-2 text-right">${mode.games.length}</td>
+                        <td class="py-2 px-2 text-right">${avgWin}</td>
+                        <td class="py-2 pl-2 truncate max-w-[7rem]">${top}</td>
+                    </tr>`;
+            }).join('');
+
+            el.innerHTML = `
+                <table class="w-full text-sm text-slate-300 table-fixed">
+                    <thead>
+                        <tr class="text-[10px] text-slate-400 uppercase tracking-wider text-left whitespace-nowrap">
+                            <th class="pb-1 pr-2 font-bold w-[30%]">Mode</th>
+                            <th class="pb-1 px-2 font-bold text-right">Games</th>
+                            <th class="pb-1 px-2 font-bold text-right">Avg win</th>
+                            <th class="pb-1 pl-2 font-bold w-[35%]">Most wins</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-800">${rows}</tbody>
+                </table>`;
+        }
+
+        // Shared tap/hover readout for chart marks
+        function showStatsTip(event) {
+            const mark = event.target.closest('.stats-tip');
+            if (!mark) return;
+            const container = mark.closest('svg').parentElement;
+            const readout = container.querySelector('.stats-tip-readout');
+            if (readout) readout.textContent = mark.dataset.tip;
+        }
+        document.getElementById('stats-view').addEventListener('click', showStatsTip);
+        document.getElementById('stats-view').addEventListener('pointerover', showStatsTip);
     </script>
 </body>
 </html>

@@ -9,13 +9,57 @@
 //   "Players" — columns: [id, name, status ("Active"/other)]
 //   "Scores"  — columns: [Game_ID, Round_Number, Timestamp, PlayerID,
 //                          Tournament_Play, Cancellation_Rules, Trick_Score]
+//   "Games"   — columns: [Game_ID, Ended_At, Reason]; one row per game that
+//               was finished (reached 100 or ended early). Abandoned games
+//               never get a row. Created automatically on first use.
 
 function doGet(e) {
   const action = e.parameter.action;
   if (action === "getStats") {
     return getStats();
   }
+  if (action === "getHistory") {
+    return getHistory();
+  }
   return getPlayers();
+}
+
+// Raw score rows plus every player (active or not), so the Stats dashboard
+// can compute its numbers in the browser without further script changes.
+function getHistory() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const playerData = ss.getSheetByName("Players").getDataRange().getValues();
+  const scoreData = ss.getSheetByName("Scores").getDataRange().getValues();
+
+  const players = [];
+  for (let i = 1; i < playerData.length; i++) {
+    players.push({ id: playerData[i][0], name: playerData[i][1] });
+  }
+
+  // [Game_ID, Round_Number, Timestamp, PlayerID, Tournament_Play, Cancellation_Rules, Trick_Score]
+  const rows = scoreData.slice(1).filter(function (row) {
+    return row[0] && row[3];
+  });
+
+  // Completed games, so abandoned ones can be told apart from finished ones
+  const completions = [];
+  const gamesSheet = ss.getSheetByName("Games");
+  if (gamesSheet) {
+    const gameData = gamesSheet.getDataRange().getValues();
+    for (let i = 1; i < gameData.length; i++) {
+      if (!gameData[i][0]) continue;
+      completions.push({ gameId: gameData[i][0], endedAt: gameData[i][1], reason: gameData[i][2] });
+    }
+  }
+
+  return ContentService
+    .createTextOutput(JSON.stringify({
+      status: "success",
+      players: players,
+      rows: rows,
+      completions: completions
+    }))
+    .setMimeType(ContentService.MimeType.JSON);
 }
 
 function getPlayers() {
@@ -175,6 +219,53 @@ function doPost(e) {
     return ContentService
       .createTextOutput(JSON.stringify({ status: "success" }))
       .setMimeType(ContentService.MimeType.JSON);
+  }
+
+  // Undo: remove a round's rows that were already sent. Only rows stamped at
+  // or before the undo are removed, so a re-entered round that lands first
+  // isn't deleted along with them.
+  if (data.action === "deleteRound") {
+    const lock = LockService.getScriptLock();
+    lock.waitLock(10000);
+    try {
+      const scoreSheet = ss.getSheetByName("Scores");
+      const values = scoreSheet.getDataRange().getValues();
+      const before = data.Before ? new Date(data.Before).getTime() : Infinity;
+      let removed = 0;
+      for (let i = values.length - 1; i >= 1; i--) {
+        const row = values[i];
+        if (String(row[0]) !== String(data.Game_ID)) continue;
+        if (Number(row[1]) !== Number(data.Round_Number)) continue;
+        const stamped = new Date(row[2]).getTime();
+        if (stamped > before) continue;
+        scoreSheet.deleteRow(i + 1);
+        removed++;
+      }
+      return ContentService
+        .createTextOutput(JSON.stringify({ status: "success", removed: removed }))
+        .setMimeType(ContentService.MimeType.JSON);
+    } finally {
+      lock.releaseLock();
+    }
+  }
+
+  // A game was finished (reached 100 or ended early), as opposed to abandoned
+  if (data.action === "endGame") {
+    const lock = LockService.getScriptLock();
+    lock.waitLock(10000);
+    try {
+      let gamesSheet = ss.getSheetByName("Games");
+      if (!gamesSheet) {
+        gamesSheet = ss.insertSheet("Games");
+        gamesSheet.appendRow(["Game_ID", "Ended_At", "Reason"]);
+      }
+      gamesSheet.appendRow([data.Game_ID, data.Ended_At, data.Reason]);
+      return ContentService
+        .createTextOutput(JSON.stringify({ status: "success" }))
+        .setMimeType(ContentService.MimeType.JSON);
+    } finally {
+      lock.releaseLock();
+    }
   }
 
   if (data.rows && Array.isArray(data.rows)) {
