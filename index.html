@@ -376,6 +376,37 @@
             </ul>
         </div>
 
+        <div class="bg-slate-800/80 backdrop-blur-md rounded-3xl p-6 border border-slate-700/50 shadow-xl space-y-3">
+            <label class="block text-sm font-bold text-slate-300 uppercase tracking-wider border-b border-slate-700/40 pb-3 mb-1">Cards by Number of Players</label>
+            <p class="text-sm text-slate-400">Every player needs the same number of cards, and one unique card has to lead the first trick. So depending on the table size, a joker is added and/or some 2s are removed.</p>
+            <div class="overflow-x-auto -mx-2">
+                <table class="w-full text-xs text-slate-300 border-collapse">
+                    <thead>
+                        <tr class="text-slate-400 uppercase tracking-wider">
+                            <th rowspan="2" class="px-2 py-2 text-left align-bottom border-b border-slate-700/40">Players</th>
+                            <th colspan="4" class="px-2 pt-2 pb-1 text-center border-b border-slate-700/40">Cards</th>
+                            <th rowspan="2" class="px-2 py-2 text-left align-bottom border-b border-slate-700/40">First lead</th>
+                        </tr>
+                        <tr class="text-slate-400 uppercase tracking-wider">
+                            <th class="px-2 py-1 text-left border-b border-slate-700/40">Added</th>
+                            <th class="px-2 py-1 text-left border-b border-slate-700/40">Removed</th>
+                            <th class="px-2 py-1 text-right border-b border-slate-700/40">Total</th>
+                            <th class="px-2 py-1 text-right border-b border-slate-700/40">Each</th>
+                        </tr>
+                    </thead>
+                    <tbody class="[&>tr:not(:last-child)>td]:border-b [&>tr>td]:border-slate-700/30">
+                        <tr><td class="px-2 py-2 font-bold">5</td><td class="px-2 py-2"><em>one joker</em></td><td class="px-2 py-2">–</td><td class="px-2 py-2 text-right">105</td><td class="px-2 py-2 text-right">21</td><td class="px-2 py-2"><em>joker</em></td></tr>
+                        <tr><td class="px-2 py-2 font-bold">6</td><td class="px-2 py-2">–</td><td class="px-2 py-2">one 2♣︎, one 2♦︎</td><td class="px-2 py-2 text-right">102</td><td class="px-2 py-2 text-right">17</td><td class="px-2 py-2">2♣︎</td></tr>
+                        <tr><td class="px-2 py-2 font-bold">7</td><td class="px-2 py-2"><em>one joker</em></td><td class="px-2 py-2">–</td><td class="px-2 py-2 text-right">105</td><td class="px-2 py-2 text-right">15</td><td class="px-2 py-2"><em>joker</em></td></tr>
+                        <tr><td class="px-2 py-2 font-bold">8</td><td class="px-2 py-2"><em>one joker</em></td><td class="px-2 py-2">one 2♣︎</td><td class="px-2 py-2 text-right">104</td><td class="px-2 py-2 text-right">13</td><td class="px-2 py-2"><em>joker</em></td></tr>
+                        <tr><td class="px-2 py-2 font-bold">9</td><td class="px-2 py-2">–</td><td class="px-2 py-2">one 2♣︎, both 2♦︎, both 2♠︎</td><td class="px-2 py-2 text-right">99</td><td class="px-2 py-2 text-right">11</td><td class="px-2 py-2">2♣︎</td></tr>
+                        <tr><td class="px-2 py-2 font-bold">10</td><td class="px-2 py-2">–</td><td class="px-2 py-2">one 2♣︎, both 2♦︎, one 2♠︎</td><td class="px-2 py-2 text-right">100</td><td class="px-2 py-2 text-right">10</td><td class="px-2 py-2">2♣︎</td></tr>
+                        <tr><td class="px-2 py-2 font-bold">11</td><td class="px-2 py-2">–</td><td class="px-2 py-2">one 2♣︎, both 2♦︎, both 2♠︎</td><td class="px-2 py-2 text-right">99</td><td class="px-2 py-2 text-right">9</td><td class="px-2 py-2">2♣︎</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
         <div class="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-4 text-sm text-amber-400">
             Heads up: since a carried-over trick can double up, a single trick is sometimes worth more points than usual. Worth double-checking the count before you enter a round's scores.
         </div>
