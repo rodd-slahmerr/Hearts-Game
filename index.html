@@ -645,9 +645,57 @@
         </div>
         <div id="gin-stats-loading" class="text-center text-slate-400 text-sm py-10">Loading history&hellip;</div>
         <div id="gin-stats-error" class="hidden text-center text-rose-400 text-sm py-10"></div>
-        <div id="gin-stats-content" class="hidden bg-slate-800/80 rounded-3xl p-4 border border-slate-700/50 shadow-xl">
-            <h2 id="gin-stats-count" class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 text-center"></h2>
-            <div id="gin-stats-games" class="text-sm"></div>
+        <div id="gin-stats-content" class="hidden space-y-6">
+            <!-- Headline numbers -->
+            <div id="gin-stats-summary" class="grid grid-cols-3 gap-3"></div>
+
+            <!-- Leaderboard -->
+            <div class="bg-slate-800/80 backdrop-blur-md rounded-3xl p-6 border border-slate-700/50 shadow-xl">
+                <label class="block text-sm font-bold text-slate-300 uppercase tracking-wider border-b border-slate-700/40 pb-3 mb-2">Leaderboard</label>
+                <p id="gin-stats-leaderboard-note" class="text-xs text-slate-500 mb-1"></p>
+                <div id="gin-stats-leaderboard" class="divide-y divide-slate-800"></div>
+            </div>
+
+            <!-- Player card -->
+            <div class="bg-slate-800/80 backdrop-blur-md rounded-3xl p-6 border border-slate-700/50 shadow-xl space-y-4">
+                <div class="flex items-center justify-between gap-3 border-b border-slate-700/40 pb-3">
+                    <label for="gin-stats-player-select" class="text-sm font-bold text-slate-300 uppercase tracking-wider">Player</label>
+                    <select id="gin-stats-player-select" onchange="renderGinPlayerCard()" class="min-w-0 max-w-[60%] bg-slate-900 border-2 border-slate-700/50 rounded-xl text-slate-100 font-bold focus:outline-none focus:border-rose-500 cursor-pointer px-3 py-2"></select>
+                </div>
+                <div id="gin-stats-player-detail"></div>
+            </div>
+
+            <!-- Head-to-head -->
+            <div class="bg-slate-800/80 backdrop-blur-md rounded-3xl p-6 border border-slate-700/50 shadow-xl space-y-4">
+                <label class="block text-sm font-bold text-slate-300 uppercase tracking-wider border-b border-slate-700/40 pb-3">Head-to-Head</label>
+                <div class="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+                    <select id="gin-stats-h2h-a" onchange="renderGinHeadToHead()" aria-label="First player" class="min-w-0 bg-slate-900 border-2 border-slate-700/50 rounded-xl text-slate-100 font-bold focus:outline-none focus:border-rose-500 cursor-pointer px-2 py-2"></select>
+                    <span class="text-xs font-bold text-slate-500 uppercase">vs</span>
+                    <select id="gin-stats-h2h-b" onchange="renderGinHeadToHead()" aria-label="Second player" class="min-w-0 bg-slate-900 border-2 border-slate-700/50 rounded-xl text-slate-100 font-bold focus:outline-none focus:border-rose-500 cursor-pointer px-2 py-2"></select>
+                </div>
+                <div id="gin-stats-h2h"></div>
+            </div>
+
+            <!-- Records -->
+            <div class="bg-slate-800/80 backdrop-blur-md rounded-3xl p-6 border border-slate-700/50 shadow-xl">
+                <label class="block text-sm font-bold text-slate-300 uppercase tracking-wider border-b border-slate-700/40 pb-3 mb-1">Records</label>
+                <div id="gin-stats-records" class="divide-y divide-slate-800"></div>
+            </div>
+
+            <!-- Trends -->
+            <div class="bg-slate-800/80 backdrop-blur-md rounded-3xl p-6 border border-slate-700/50 shadow-xl space-y-5">
+                <label class="block text-sm font-bold text-slate-300 uppercase tracking-wider border-b border-slate-700/40 pb-3">Trends</label>
+                <div>
+                    <div class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Games per month</div>
+                    <div id="gin-stats-monthly"></div>
+                </div>
+            </div>
+
+            <!-- Recent games -->
+            <div class="bg-slate-800/80 backdrop-blur-md rounded-3xl p-6 border border-slate-700/50 shadow-xl">
+                <label class="block text-sm font-bold text-slate-300 uppercase tracking-wider border-b border-slate-700/40 pb-3 mb-2">Recent Games</label>
+                <div id="gin-stats-games" class="divide-y divide-slate-800 text-sm"></div>
+            </div>
         </div>
     </div>
 
@@ -1614,29 +1662,252 @@
             }
         }
 
-        // Finished games, newest first
-        function renderGinStats(result) {
-            const names = {};
-            result.players.forEach((p) => { names[p.id] = p.name; });
-            const nameOf = (id) => escapeHtml(names[id] || id);
-            const games = result.ginGames.slice().sort((a, b) => new Date(b.Ended_At) - new Date(a.Ended_At));
+        // ── Gin Rummy stats, worked out from the raw sheet history ────────
+        let ginStatsModel = null;
 
-            document.getElementById('gin-stats-count').textContent =
-                `${games.length} finished ${games.length === 1 ? 'game' : 'games'} · ${result.ginHands.length} ${result.ginHands.length === 1 ? 'hand' : 'hands'} played`;
+        // Finished games only (a GinGames row); hands from abandoned games are left out
+        function buildGinStatsModel(result) {
+            const names = {};
+            (result.players || []).forEach((p) => { names[p.id] = p.name; });
+            const nameOf = (id) => names[id] || id;
+
+            // A failed undo can leave a hand stored twice; keep the latest per game/hand
+            const latestHand = {};
+            result.ginHands.forEach((h) => {
+                const key = `${h.Game_ID}|${h.Hand_Number}`;
+                const time = new Date(h.Timestamp).getTime() || 0;
+                if (!latestHand[key] || time >= latestHand[key].time) latestHand[key] = { ...h, time };
+            });
+            const handsByGame = {};
+            Object.values(latestHand).forEach((h) => { (handsByGame[h.Game_ID] = handsByGame[h.Game_ID] || []).push(h); });
+
+            const games = result.ginGames.map((g) => {
+                const ids = [String(g.Player_1), String(g.Player_2)];
+                const scores = { [ids[0]]: Number(g.Player_1_Score) || 0, [ids[1]]: Number(g.Player_2_Score) || 0 };
+                const hands = (handsByGame[g.Game_ID] || []).sort((a, b) => a.Hand_Number - b.Hand_Number);
+                const handsWon = { [ids[0]]: 0, [ids[1]]: 0 };
+                hands.forEach((h) => { if (h.Winner_ID in handsWon) handsWon[h.Winner_ID]++; });
+                const winner = g.Winner_ID ? String(g.Winner_ID) : null;
+                const loser = winner ? ids.find((id) => id !== winner) : null;
+                return {
+                    id: g.Game_ID, time: new Date(g.Ended_At).getTime() || 0, ids, scores, hands, handsWon, winner, loser,
+                    reachedTarget: String(g.Reason).startsWith('Reached'),
+                    margin: Math.abs(scores[ids[0]] - scores[ids[1]]),
+                    shutout: !!winner && String(g.Reason).startsWith('Reached') && hands.length > 0 && handsWon[loser] === 0
+                };
+            }).sort((a, b) => a.time - b.time);
+
+            const players = {};
+            const playerOf = (id) => players[id] || (players[id] = {
+                id, name: nameOf(id), games: 0, wins: 0, hands: 0, handsWon: 0, handPoints: 0, finalTotal: 0,
+                knocks: 0, gins: 0, bigGins: 0, undercuts: 0, undercutAgainst: 0, biggestHand: 0, shutouts: 0,
+                streak: 0, longestStreak: 0
+            });
+            games.forEach((g) => {
+                g.ids.forEach((id) => {
+                    const p = playerOf(id);
+                    p.games++;
+                    p.finalTotal += g.scores[id];
+                    p.hands += g.hands.length;
+                    if (g.winner === id) {
+                        p.wins++;
+                        p.streak++;
+                        p.longestStreak = Math.max(p.longestStreak, p.streak);
+                        if (g.shutout) p.shutouts++;
+                    } else {
+                        p.streak = 0;
+                    }
+                });
+                g.hands.forEach((h) => {
+                    const points = Number(h.Points) || 0;
+                    if (players[h.Winner_ID]) {
+                        const w = players[h.Winner_ID];
+                        w.handsWon++;
+                        w.handPoints += points;
+                        w.biggestHand = Math.max(w.biggestHand, points);
+                    }
+                    const k = players[h.Knocker_ID];
+                    if (!k) return;
+                    if (h.Result === 'gin') k.gins++;
+                    else if (h.Result === 'big gin') k.bigGins++;
+                    else if (h.Result === 'knock') k.knocks++;
+                    else if (h.Result === 'undercut') {
+                        k.undercutAgainst++;
+                        if (players[h.Winner_ID]) players[h.Winner_ID].undercuts++;
+                    }
+                });
+            });
+            const playerList = Object.values(players).map((p) => ({
+                ...p,
+                winRate: p.games ? p.wins / p.games : 0,
+                avgHand: p.hands ? p.handPoints / p.hands : 0,
+                avgFinal: p.games ? p.finalTotal / p.games : 0
+            }));
+            const handCount = games.reduce((sum, g) => sum + g.hands.length, 0);
+            return { games, players: playerList, nameOf, handCount };
+        }
+
+        function renderGinStats(result) {
+            const model = ginStatsModel = buildGinStatsModel(result);
+            const ginCount = model.players.reduce((sum, p) => sum + p.gins + p.bigGins, 0);
+            document.getElementById('gin-stats-summary').innerHTML =
+                statTile(model.games.length, model.games.length === 1 ? 'Game' : 'Games') +
+                statTile(model.handCount, model.handCount === 1 ? 'Hand' : 'Hands') +
+                statTile(ginCount, ginCount === 1 ? 'Gin' : 'Gins');
+
+            renderLeaderboard(model.players.map((p) => ({
+                name: p.name, games: p.games, wins: p.wins, winRate: p.winRate,
+                detail: `${p.games} ${p.games === 1 ? 'game' : 'games'} &middot; ${p.gins + p.bigGins} ${p.gins + p.bigGins === 1 ? 'gin' : 'gins'}`
+            })), 'gin-stats');
+
+            // Player pickers, most active players first
+            const byGames = model.players.slice().sort((a, b) => b.games - a.games || a.name.localeCompare(b.name));
+            const options = byGames.map((p) => `<option value="${escapeHtml(p.id)}">${escapeHtml(p.name)}</option>`).join('');
+            const selects = ['gin-stats-player-select', 'gin-stats-h2h-a', 'gin-stats-h2h-b'].map((id) => document.getElementById(id));
+            const keep = selects.map((sel) => sel.value);
+            selects.forEach((sel) => { sel.innerHTML = options; });
+            const has = (id) => byGames.some((p) => p.id === id);
+            const first = byGames[0] ? byGames[0].id : '';
+            selects[0].value = has(keep[0]) ? keep[0] : first;
+            selects[1].value = has(keep[1]) ? keep[1] : first;
+            selects[2].value = has(keep[2]) ? keep[2] : (byGames[1] ? byGames[1].id : first);
+
+            renderGinPlayerCard();
+            renderGinHeadToHead();
+            renderGinRecords(model);
+            renderMonthlyChart(model.games, 'gin-stats-monthly');
+            renderGinRecentGames(model);
+        }
+
+        function renderGinPlayerCard() {
+            const el = document.getElementById('gin-stats-player-detail');
+            if (!ginStatsModel) return;
+            const id = document.getElementById('gin-stats-player-select').value;
+            const p = ginStatsModel.players.find((x) => x.id === id);
+            if (!p) {
+                el.innerHTML = `<div class="text-sm text-slate-500 italic text-center py-4">No games finished yet.</div>`;
+                return;
+            }
+            const item = (label, value) => `
+                <div class="flex items-baseline justify-between py-2 gap-2">
+                    <span class="text-sm text-slate-400">${label}</span>
+                    <span class="font-display font-black text-white">${value}</span>
+                </div>`;
+            el.innerHTML = `
+                <div class="grid grid-cols-3 gap-3 mb-3">
+                    ${statTile(p.wins, p.wins === 1 ? 'Win' : 'Wins')}
+                    ${statTile(p.gins + p.bigGins, p.gins + p.bigGins === 1 ? 'Gin' : 'Gins')}
+                    ${statTile(p.undercuts, p.undercuts === 1 ? 'Undercut' : 'Undercuts')}
+                </div>
+                <div class="divide-y divide-slate-800">
+                    ${item('Win rate', `${Math.round(p.winRate * 100)}% of ${p.games}`)}
+                    ${item('Hands won', `${p.handsWon} of ${p.hands}`)}
+                    ${item('Average points per hand', p.avgHand.toFixed(1))}
+                    ${item('Average final score', Math.round(p.avgFinal))}
+                    ${item('Knocks won', p.knocks)}
+                    ${item('Gins / big gins', `${p.gins} / ${p.bigGins}`)}
+                    ${item('Undercuts scored / suffered', `${p.undercuts} / ${p.undercutAgainst}`)}
+                    ${item('Biggest single hand', p.biggestHand)}
+                    ${item('Shutout wins', p.shutouts)}
+                    ${item('Longest win streak', p.longestStreak)}
+                    ${item('Current win streak', p.streak)}
+                </div>`;
+        }
+
+        function renderGinHeadToHead() {
+            const el = document.getElementById('gin-stats-h2h');
+            if (!ginStatsModel) return;
+            const a = document.getElementById('gin-stats-h2h-a').value;
+            const b = document.getElementById('gin-stats-h2h-b').value;
+            if (!a || !b || a === b) {
+                el.innerHTML = `<div class="text-sm text-slate-500 italic text-center py-2">Pick two different players.</div>`;
+                return;
+            }
+            const shared = ginStatsModel.games.filter((g) => g.ids.includes(a) && g.ids.includes(b));
+            if (shared.length === 0) {
+                el.innerHTML = `<div class="text-sm text-slate-500 italic text-center py-2">These two haven't finished a game together yet.</div>`;
+                return;
+            }
+            const aWins = shared.filter((g) => g.winner === a).length;
+            const bWins = shared.filter((g) => g.winner === b).length;
+            const ties = shared.length - aWins - bWins;
+            const handsA = shared.reduce((sum, g) => sum + g.handsWon[a], 0);
+            const handsB = shared.reduce((sum, g) => sum + g.handsWon[b], 0);
+            const nameA = escapeHtml(ginStatsModel.nameOf(a));
+            const nameB = escapeHtml(ginStatsModel.nameOf(b));
+            el.innerHTML = `
+                <div class="grid grid-cols-2 gap-3 mb-3">
+                    ${statTile(aWins, `${nameA} ${aWins === 1 ? 'win' : 'wins'}`)}
+                    ${statTile(bWins, `${nameB} ${bWins === 1 ? 'win' : 'wins'}`)}
+                </div>
+                <div class="flex h-2.5 rounded-full overflow-hidden gap-[2px]" role="img" aria-label="${nameA} won ${aWins}, ${nameB} won ${bWins}, ${ties} ties">
+                    ${aWins ? `<div style="width:${(aWins / shared.length) * 100}%;background:var(--accent)"></div>` : ''}
+                    ${ties ? `<div style="width:${(ties / shared.length) * 100}%;background:var(--border)"></div>` : ''}
+                    ${bWins ? `<div style="flex:1;background:var(--accent2)"></div>` : ''}
+                </div>
+                <div class="text-xs text-slate-500 mt-2 text-center">${shared.length} ${shared.length === 1 ? 'game' : 'games'} together${ties ? `, ${ties} tied` : ''} &middot; hands won ${handsA} to ${handsB}</div>`;
+        }
+
+        function renderGinRecords(model) {
+            const el = document.getElementById('gin-stats-records');
+            const decided = model.games.filter((g) => g.winner);
+            if (model.games.length === 0) {
+                el.innerHTML = `<div class="text-sm text-slate-500 italic text-center py-4">No games finished yet.</div>`;
+                return;
+            }
+            const name = (id) => escapeHtml(model.nameOf(id));
+            const record = (title, who, detail, time) => `
+                <div class="py-3">
+                    <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">${title}</div>
+                    <div class="flex items-baseline justify-between gap-3 mt-0.5">
+                        <span class="font-bold text-white">${who}</span>
+                        <span class="text-xs text-slate-500 text-right flex-shrink-0">${formatStatDate(time)}</span>
+                    </div>
+                    <div class="text-sm text-slate-400">${detail}</div>
+                </div>`;
+
+            let html = '';
+            const allHands = model.games.flatMap((g) => g.hands.map((h) => ({ ...h, gameTime: g.time })));
+            if (allHands.length) {
+                const big = allHands.reduce((a, b) => ((Number(b.Points) || 0) > (Number(a.Points) || 0) ? b : a));
+                const how = { knock: 'Knock', undercut: 'Undercut', gin: 'Gin', 'big gin': 'Big gin' }[big.Result] || big.Result;
+                html += record('Biggest single hand', name(big.Winner_ID), `${how} for ${big.Points} pts`, big.gameTime);
+            }
+            if (decided.length) {
+                const pick = (better) => decided.reduce((a, b) => (better(b, a) ? b : a));
+                const blowout = pick((a, b) => a.margin > b.margin);
+                const closest = pick((a, b) => a.margin < b.margin);
+                html += record('Biggest game win', name(blowout.winner),
+                    `${blowout.scores[blowout.winner]} to ${blowout.scores[blowout.loser]} against ${name(blowout.loser)}`, blowout.time);
+                html += record('Closest game', name(closest.winner),
+                    `Won by ${closest.margin} ${closest.margin === 1 ? 'pt' : 'pts'} against ${name(closest.loser)}`, closest.time);
+            }
+            const longest = model.games.reduce((a, b) => (b.hands.length > a.hands.length ? b : a));
+            html += record('Longest game', `${name(longest.ids[0])} vs ${name(longest.ids[1])}`, `${longest.hands.length} hands`, longest.time);
+            const shutouts = model.games.filter((g) => g.shutout);
+            if (shutouts.length) {
+                const last = shutouts[shutouts.length - 1];
+                html += record('Shutouts', `${shutouts.length} ${shutouts.length === 1 ? 'game' : 'games'}`,
+                    `Latest: ${name(last.winner)} over ${name(last.loser)}`, last.time);
+            }
+            el.innerHTML = html;
+        }
+
+        function renderGinRecentGames(model) {
             const box = document.getElementById('gin-stats-games');
+            const games = model.games.slice().reverse().slice(0, 10);
             if (games.length === 0) {
-                box.innerHTML = '<div class="text-slate-500 text-xs italic text-center py-2">No Gin Rummy games finished yet.</div>';
+                box.innerHTML = '<div class="text-sm text-slate-500 italic text-center py-4">No Gin Rummy games finished yet.</div>';
                 return;
             }
             box.innerHTML = games.map((g) => {
-                const ended = new Date(g.Ended_At);
-                const when = isNaN(ended) ? '' : ended.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
-                const side = (id, score) => `<span class="${id === g.Winner_ID ? 'font-bold text-[var(--accent)]' : 'text-slate-200'}">${nameOf(id)} ${score}</span>`;
-                const label = [when, g.Game_Name ? escapeHtml(g.Game_Name) : '', escapeHtml(g.Reason)].filter(Boolean).join(' · ');
+                const side = (id) => `<span class="${id === g.winner ? 'font-bold text-[var(--accent)]' : 'text-slate-200'}">${escapeHtml(model.nameOf(id))} ${g.scores[id]}</span>`;
+                const detail = [formatStatDate(g.time), g.reachedTarget ? '' : 'Ended early', g.winner ? '' : 'Tied', g.shutout ? 'Shutout' : '']
+                    .filter(Boolean).join(' &middot; ');
                 return `
-                    <div class="py-2 border-b border-slate-800 last:border-b-0">
-                        <div class="text-xs text-slate-500">${label}</div>
-                        <div class="truncate">${side(g.Player_1, g.Player_1_Score)} <span class="text-slate-500">vs</span> ${side(g.Player_2, g.Player_2_Score)}</div>
+                    <div class="py-2.5">
+                        <div class="truncate">${side(g.ids[0])} <span class="text-slate-500">vs</span> ${side(g.ids[1])}</div>
+                        <div class="text-xs text-slate-500">${detail}</div>
                     </div>`;
             }).join('');
         }
@@ -2898,9 +3169,9 @@ async function checkNewPlayer(selectElement, seatIndex) {
             })));
         }
 
-        function renderLeaderboard(rows) {
-            const leaderboardEl = document.getElementById('stats-leaderboard');
-            document.getElementById('stats-leaderboard-note').textContent =
+        function renderLeaderboard(rows, prefix = 'stats') {
+            const leaderboardEl = document.getElementById(`${prefix}-leaderboard`);
+            document.getElementById(`${prefix}-leaderboard-note`).textContent =
                 `Ranked by win rate. Players need ${STATS_MIN_GAMES}+ games to be ranked.`;
 
             if (rows.length === 0) {
@@ -3106,8 +3377,8 @@ async function checkNewPlayer(selectElement, seatIndex) {
                 <div class="text-xs text-slate-500 mt-2 text-center">${shared} ${shared === 1 ? 'game' : 'games'} together${ties ? `, ${ties} tied` : ''}</div>`;
         }
 
-        function renderMonthlyChart(games) {
-            const el = document.getElementById('stats-monthly');
+        function renderMonthlyChart(games, elId = 'stats-monthly') {
+            const el = document.getElementById(elId);
             const now = new Date();
             const months = [];
             for (let i = 11; i >= 0; i--) {
@@ -3201,6 +3472,8 @@ async function checkNewPlayer(selectElement, seatIndex) {
         }
         document.getElementById('stats-view').addEventListener('click', showStatsTip);
         document.getElementById('stats-view').addEventListener('pointerover', showStatsTip);
+        document.getElementById('gin-stats-view').addEventListener('click', showStatsTip);
+        document.getElementById('gin-stats-view').addEventListener('pointerover', showStatsTip);
     </script>
 </body>
 </html>
