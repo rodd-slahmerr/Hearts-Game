@@ -446,7 +446,7 @@
                             <input type="number" id="gin-set-box-bonus" value="25" min="0" step="1" inputmode="numeric" class="w-20 bg-slate-900 border-2 border-slate-700/60 rounded-xl px-3 py-2 text-right text-base font-bold text-slate-100 focus:outline-none focus:border-rose-500 transition-colors">
                         </label>
                         <label class="flex items-center justify-between gap-3">
-                            <span class="text-sm text-slate-300">Shutout doubles the winner's score</span>
+                            <span class="text-sm text-slate-300">Shutout doubles the winner's hand points</span>
                             <input type="checkbox" id="gin-set-shutout-double" checked class="w-5 h-5 accent-[var(--accent)]">
                         </label>
                         <button type="button" onclick="resetGinSettings()" class="text-xs font-bold text-[var(--accent)] hover:opacity-70 underline underline-offset-2 transition-opacity">Reset to standard</button>
@@ -542,6 +542,7 @@
                     <button type="button" data-gin-result="gin" onclick="setGinResult('gin')">Gin</button>
                     <button type="button" data-gin-result="bigGin" onclick="setGinResult('bigGin')">Big gin</button>
                 </div>
+                <button type="button" data-gin-result="draw" onclick="setGinResult('draw')">Draw (stock ran out, no knock)</button>
             </div>
 
             <div id="gin-deadwood-fields" class="hidden space-y-3">
@@ -1397,7 +1398,7 @@
         // Hands won by each player (the "boxes")
         function ginBoxCounts() {
             const boxes = [0, 0];
-            ginGame.hands.forEach((hand) => { boxes[hand.winnerIdx] += 1; });
+            ginGame.hands.forEach((hand) => { if (hand.winnerIdx !== null) boxes[hand.winnerIdx] += 1; });
             return boxes;
         }
 
@@ -1426,11 +1427,14 @@
 
         function setGinKnocker(index) {
             ginEntry.knocker = index;
+            if (ginEntry.result === 'draw') ginEntry.result = null;
             updateGinEntry();
         }
 
+        // A draw has no knocker, so picking it clears the knocker
         function setGinResult(result) {
             ginEntry.result = result;
+            if (result === 'draw') ginEntry.knocker = null;
             updateGinEntry();
         }
 
@@ -1452,6 +1456,9 @@
         // The hand as entered, scored; or { message } saying what's still needed
         function readGinEntry() {
             const { knocker, result } = ginEntry;
+            if (result === 'draw') {
+                return { knocker: null, result, knockerDeadwood: null, defenderDeadwood: null, outcome: 'draw', points: 0, winnerIdx: null };
+            }
             if (knocker === null) return { message: 'Pick who knocked or went gin' };
             if (result === null) return { message: 'Pick how the hand ended' };
 
@@ -1467,7 +1474,7 @@
         }
 
         function ginOutcomeLabel(outcome) {
-            return { knock: 'Knock', undercut: 'Undercut', gin: 'Gin', bigGin: 'Big gin' }[outcome];
+            return { knock: 'Knock', undercut: 'Undercut', gin: 'Gin', bigGin: 'Big gin', draw: 'Draw' }[outcome];
         }
 
         function updateGinEntry() {
@@ -1500,8 +1507,9 @@
                 save.disabled = true;
                 save.className = "w-full py-4 rounded-2xl bg-slate-700 text-slate-400 font-extrabold shadow-lg cursor-not-allowed transition-all duration-200";
             } else {
-                const winnerName = getPlayerDisplayName(ginGame.playerIds[entry.winnerIdx]);
-                preview.textContent = `${ginOutcomeLabel(entry.outcome)}: ${winnerName} scores ${entry.points}`;
+                preview.textContent = entry.winnerIdx === null
+                    ? 'Draw: nobody scores'
+                    : `${ginOutcomeLabel(entry.outcome)}: ${getPlayerDisplayName(ginGame.playerIds[entry.winnerIdx])} scores ${entry.points}`;
                 preview.className = "px-4 py-2 rounded-xl text-sm font-bold mb-3 text-center bg-emerald-500/10 text-emerald-400 border border-emerald-500/30";
                 save.disabled = false;
                 save.className = "w-full py-4 rounded-2xl bg-[var(--accent)] text-[var(--on-accent)] font-extrabold shadow-lg hover:opacity-90 active:scale-[0.98] transition-all duration-200";
@@ -1510,7 +1518,7 @@
 
         function recomputeGinTotals() {
             ginGame.totals = [0, 0];
-            ginGame.hands.forEach((hand) => { ginGame.totals[hand.winnerIdx] += hand.points; });
+            ginGame.hands.forEach((hand) => { if (hand.winnerIdx !== null) ginGame.totals[hand.winnerIdx] += hand.points; });
         }
 
         function saveGinHand() {
@@ -1532,14 +1540,16 @@
             saveGinGameState();
             shipGinHand(hand);
 
-            if (ginGame.totals[hand.winnerIdx] >= ginGame.targetScore) {
+            if (hand.winnerIdx !== null && ginGame.totals[hand.winnerIdx] >= ginGame.targetScore) {
                 finishGinGame('target');
                 return;
             }
             renderGinScoreboard();
             renderGinHistory();
             resetGinEntry();
-            showToast(`Hand ${hand.handNumber}: ${getPlayerDisplayName(ginGame.playerIds[hand.winnerIdx])} scores ${hand.points}`);
+            showToast(hand.winnerIdx === null
+                ? `Hand ${hand.handNumber}: draw, nobody scores`
+                : `Hand ${hand.handNumber}: ${getPlayerDisplayName(ginGame.playerIds[hand.winnerIdx])} scores ${hand.points}`);
         }
 
         function undoGinHand() {
@@ -1563,6 +1573,16 @@
             }
             const verbs = { knock: 'knocked', undercut: 'knocked, undercut', gin: 'went gin', bigGin: 'went big gin' };
             box.innerHTML = ginGame.hands.slice().reverse().map((hand) => {
+                if (hand.result === 'draw') {
+                    return `
+                    <div class="flex items-center justify-between gap-3 py-2 border-b border-slate-800 last:border-b-0">
+                        <div class="min-w-0">
+                            <div class="text-xs text-slate-500">Hand ${hand.handNumber}</div>
+                            <div class="text-slate-200 truncate">Draw, no knock</div>
+                        </div>
+                        <div class="text-right whitespace-nowrap font-bold text-slate-400">0</div>
+                    </div>`;
+                }
                 const knockerName = escapeHtml(getPlayerDisplayName(ginGame.playerIds[hand.knockerIdx]));
                 const winnerName = escapeHtml(getPlayerDisplayName(ginGame.playerIds[hand.winnerIdx]));
                 return `
@@ -1582,9 +1602,9 @@
         // ── Gin Rummy end of game ────────────────────────────────────────
         // Final score for each player: hand points plus the box bonus for each
         // hand won. When someone reached the target, the winner also gets the
-        // game bonus, and the winner's whole total doubles for a shutout (the
-        // loser won no hands) if that setting is on. Ending early adds no game
-        // bonus or shutout, and the higher total wins.
+        // game bonus, and for a shutout (the loser won no hands) the winner's
+        // hand points double before the bonuses are added, if that setting is
+        // on. Ending early adds no game bonus or shutout, and the higher total wins.
         function finalGinScores(reason) {
             const s = ginGame.settings;
             const boxes = ginBoxCounts();
@@ -1593,7 +1613,8 @@
                 boxes: boxes[i],
                 boxBonus: boxes[i] * s.boxBonus,
                 gameBonus: 0,
-                shutout: false
+                shutout: false,
+                shutoutBonus: 0
             }));
 
             let winnerIdx = null;
@@ -1607,8 +1628,8 @@
                 players[winnerIdx].shutout = s.shutoutDoubles && boxes[1 - winnerIdx] === 0;
             }
             players.forEach((p) => {
-                const subtotal = p.handPoints + p.gameBonus + p.boxBonus;
-                p.total = p.shutout ? subtotal * 2 : subtotal;
+                if (p.shutout) p.shutoutBonus = p.handPoints;
+                p.total = p.handPoints + p.shutoutBonus + p.gameBonus + p.boxBonus;
             });
             return { players, winnerIdx };
         }
@@ -1666,9 +1687,9 @@
                     ${values.map((v) => `<td class="${cell}">${v}</td>`).join('')}
                 </tr>`;
             let rows = row('Hand points', players.map((p) => p.handPoints));
+            if (players.some((p) => p.shutout)) rows += row('Shutout (hand points doubled)', players.map((p) => p.shutout ? `+${p.shutoutBonus}` : ''));
             if (reason === 'target') rows += row('Game bonus', players.map((p) => p.gameBonus ? `+${p.gameBonus}` : '0'));
             rows += row(`Box bonus (${ginGame.settings.boxBonus} per hand won)`, players.map((p) => `+${p.boxBonus}<div class="text-xs font-normal text-slate-500">${p.boxes} ${p.boxes === 1 ? 'hand' : 'hands'}</div>`));
-            if (players.some((p) => p.shutout)) rows += row('Shutout', players.map((p) => p.shutout ? 'Doubled' : ''));
             rows += `
                 <tr>
                     <td class="pt-3 text-left font-bold text-slate-200">Total</td>
@@ -1700,7 +1721,7 @@
         }
 
         // ── Gin Rummy sheet (GinHands / GinGames tabs) ───────────────────
-        const GIN_SHEET_RESULTS = { knock: 'knock', undercut: 'undercut', gin: 'gin', bigGin: 'big gin' };
+        const GIN_SHEET_RESULTS = { knock: 'knock', undercut: 'undercut', gin: 'gin', bigGin: 'big gin', draw: 'draw' };
 
         async function postGinToSheet(payload) {
             if (!WEB_APP_URL || WEB_APP_URL.includes("YOUR_GOOGLE_APPS_SCRIPT_WEB_APP")) return;
@@ -1717,12 +1738,12 @@
                 Game_ID: ginGame.gameId,
                 Hand_Number: hand.handNumber,
                 Timestamp: hand.timestamp,
-                Knocker_ID: ginGame.playerIds[hand.knockerIdx],
+                Knocker_ID: hand.knockerIdx === null ? "" : ginGame.playerIds[hand.knockerIdx],
                 Result: GIN_SHEET_RESULTS[hand.result],
                 Knocker_Deadwood: hand.knockerDeadwood,
                 Defender_Deadwood: hand.defenderDeadwood,
                 Points: hand.points,
-                Winner_ID: ginGame.playerIds[hand.winnerIdx]
+                Winner_ID: hand.winnerIdx === null ? "" : ginGame.playerIds[hand.winnerIdx]
             });
         }
 
