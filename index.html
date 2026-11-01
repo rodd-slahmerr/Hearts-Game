@@ -16,6 +16,7 @@
 
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=UnifrakturMaguntia&display=swap" rel="stylesheet">
     <style>
         :root, [data-theme="light"] {
             --bg:#FBF9F3; --surface:#FFFFFF; --surface-2:#F1EFE4; --surface-hover:#E9E5D6;
@@ -76,6 +77,31 @@
             --radius-lg:26px; --radius-md:20px; --radius-sm:999px;
             --word-tracking:0em; --word-case:none;
             --moon:#F6EDDC; --moon-glow:rgba(217,162,58,0.5);
+        }
+
+        /* Seasonal: day after Thanksgiving through Dec 26 (see isThemeInSeason) */
+        [data-theme="christmas"] {
+            --bg:#FBF3E8; --surface:#FFFAF3; --surface-2:#F6E7D6; --surface-hover:#EED9C2;
+            --ink:#3A2416; --muted:#6B4A33; --border:#E2CBB0;
+            --accent:#B3162E; --accent-soft:rgba(179,22,46,0.10); --accent-soft-2:rgba(179,22,46,0.24);
+            --accent2:#2E7D4F; --accent2-soft:rgba(46,125,79,0.12); --accent2-soft-2:rgba(46,125,79,0.26);
+            --success:#2E7D4F; --success-soft:rgba(46,125,79,0.12); --success-soft-2:rgba(46,125,79,0.26);
+            --bronze:#A8642F; --silver-soft:rgba(107,74,51,0.14);
+            --on-accent:#FFF8F0; --on-accent2:#FFF8F0; --on-success:#FFF8F0;
+            --font-display:Georgia,'Palatino Linotype',Palatino,serif;
+            --font-blackletter:'UnifrakturMaguntia','Old English Text MT',Georgia,serif;
+            --font-body:'Segoe UI','Seravek','Helvetica Neue',Arial,sans-serif;
+            --radius-lg:26px; --radius-md:20px; --radius-sm:999px;
+            --word-tracking:0em; --word-case:none;
+            --moon:#FBF3E8; --moon-glow:rgba(227,176,75,0.5);
+        }
+
+        /* Old English lettering for headings only; scores stay in the readable serif */
+        [data-theme="christmas"] .font-display.font-extrabold,
+        [data-theme="christmas"] h2.font-display {
+            font-family: var(--font-blackletter);
+            font-weight: 400;
+            font-size-adjust: 0.56; /* blackletter has short lowercase; match the other themes' size */
         }
 
         body {
@@ -232,6 +258,10 @@
             if (name === 'thanksgiving') {
                 return now.getMonth() === 10 && now.getDate() <= thanksgivingDay(now.getFullYear());
             }
+            if (name === 'christmas') {
+                return (now.getMonth() === 10 && now.getDate() > thanksgivingDay(now.getFullYear()))
+                    || (now.getMonth() === 11 && now.getDate() <= 26);
+            }
             return true;
         }
 
@@ -239,7 +269,7 @@
         (function () {
             try {
                 var saved = localStorage.getItem('hearts_theme_v1');
-                if ((saved === 'dark' || saved === 'ranch' || saved === 'thanksgiving') && isThemeInSeason(saved)) {
+                if ((saved === 'dark' || saved === 'ranch' || saved === 'thanksgiving' || saved === 'christmas') && isThemeInSeason(saved)) {
                     document.documentElement.setAttribute('data-theme', saved);
                 }
             } catch (err) { /* localStorage unavailable, fall back to default light */ }
@@ -664,12 +694,19 @@
             <path d="M28 54 L27 60 M36 54 L37 60" stroke="#C47F2A" stroke-width="2.2" stroke-linecap="round"/>
         </svg>`;
 
+        const CANDY_CANE_ICON = `<svg viewBox="0 0 64 64" width="32" height="32" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <path d="M38 58 L38 22 C38 8 20 8 20 22" stroke="#FFFFFF" stroke-width="10" fill="none" stroke-linecap="round"/>
+            <path d="M38 58 L38 22 C38 8 20 8 20 22" stroke="#B3162E" stroke-width="10" fill="none" stroke-linecap="round" stroke-dasharray="5 5"/>
+            <path d="M38 58 L38 22 C38 8 20 8 20 22" stroke="#7A0F1F" stroke-width="1.2" fill="none" stroke-linecap="round" opacity="0.25"/>
+        </svg>`;
+
         // `icon` themes show only their picture in the picker, no label
         const THEME_META = {
             light: { label: 'Light', swatch: '#2F5233', bg: '#FBF9F3' },
             dark: { label: 'Dark', swatch: '#C98A2B', bg: '#17130F' },
             ranch: { label: 'Ranch', swatch: '#8C1D18', bg: '#141110', icon: BARN_ICON },
-            thanksgiving: { label: 'Thanksgiving', swatch: '#7E2233', bg: '#F6EDDC', icon: TURKEY_ICON }
+            thanksgiving: { label: 'Thanksgiving', swatch: '#7E2233', bg: '#F6EDDC', icon: TURKEY_ICON },
+            christmas: { label: 'Christmas', swatch: '#B3162E', bg: '#FBF3E8', icon: CANDY_CANE_ICON }
         };
 
         function applyTheme(name) {
@@ -1176,10 +1213,69 @@ async function checkNewPlayer(selectElement, seatIndex) {
                 <g id="ti-pie"><path d="M-7 5 L7 5 L0 -8 Z" fill="#D9A23A"/><path d="M-7 5 L7 5 L6 7.5 L-6 7.5 Z" fill="#B87A2A"/><path d="M-3.5 -1 L3.5 -1" stroke="#FFF6E6" stroke-width="1.3" stroke-linecap="round" opacity="0.8"/></g>
             </defs>`;
 
+        // Christmas swaps the moon for a very round Santa, backlit by a warm glow
+        // (drawn in a 300x300 box, scaled into the overlay's 200x200 one)
+        const SANTA_ART = `
+            <defs>
+                <filter id="santa-glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="18"/></filter>
+                <clipPath id="santa-belly"><ellipse cx="150" cy="192" rx="104" ry="84"/></clipPath>
+            </defs>
+            <g transform="scale(0.6667)">
+                <circle cx="150" cy="160" r="140" fill="#E3B04B" opacity="0.26" filter="url(#santa-glow)"/>
+                <circle cx="150" cy="166" r="96" fill="#F6D58A" opacity="0.34" filter="url(#santa-glow)"/>
+                <rect x="112" y="244" width="28" height="28" fill="#9A1226"/>
+                <rect x="160" y="244" width="28" height="28" fill="#9A1226"/>
+                <ellipse cx="122" cy="276" rx="27" ry="12" fill="#1E1612"/>
+                <ellipse cx="178" cy="276" rx="27" ry="12" fill="#1E1612"/>
+                <ellipse cx="50" cy="180" rx="26" ry="46" fill="#B3162E" transform="rotate(18 50 180)"/>
+                <ellipse cx="250" cy="180" rx="26" ry="46" fill="#B3162E" transform="rotate(-18 250 180)"/>
+                <circle cx="38" cy="228" r="16" fill="#2E5E3E"/>
+                <circle cx="262" cy="228" r="16" fill="#2E5E3E"/>
+                <ellipse cx="42" cy="214" rx="21" ry="9" fill="#FBF3E8" transform="rotate(18 42 214)"/>
+                <ellipse cx="258" cy="214" rx="21" ry="9" fill="#FBF3E8" transform="rotate(-18 258 214)"/>
+                <ellipse cx="150" cy="192" rx="104" ry="84" fill="#B3162E"/>
+                <ellipse cx="128" cy="172" rx="54" ry="34" fill="#C93045" opacity="0.55"/>
+                <g clip-path="url(#santa-belly)">
+                    <rect x="140" y="104" width="20" height="180" fill="#FBF3E8"/>
+                    <rect x="40" y="252" width="220" height="30" fill="#FBF3E8"/>
+                    <rect x="40" y="196" width="220" height="22" fill="#1E1612"/>
+                </g>
+                <rect x="130" y="191" width="40" height="32" rx="4" fill="none" stroke="#E3B04B" stroke-width="5"/>
+                <circle cx="150" cy="92" r="36" fill="#F2C6A0"/>
+                <g fill="#FBF3E8">
+                    <circle cx="116" cy="98" r="13"/><circle cx="184" cy="98" r="13"/>
+                    <circle cx="118" cy="118" r="22"/><circle cx="182" cy="118" r="22"/>
+                    <circle cx="136" cy="138" r="24"/><circle cx="164" cy="138" r="24"/>
+                    <circle cx="150" cy="154" r="24"/><circle cx="150" cy="126" r="20"/>
+                </g>
+                <circle cx="127" cy="99" r="7" fill="#EFA0A0" opacity="0.7"/>
+                <circle cx="173" cy="99" r="7" fill="#EFA0A0" opacity="0.7"/>
+                <path d="M128 88 Q134 82 140 88 M160 88 Q166 82 172 88" stroke="#3A2416" stroke-width="3" fill="none" stroke-linecap="round"/>
+                <ellipse cx="134" cy="77" rx="9" ry="4" fill="#FFFFFF"/>
+                <ellipse cx="166" cy="77" rx="9" ry="4" fill="#FFFFFF"/>
+                <path d="M142 124 Q150 130 158 124" stroke="#8A2A2A" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+                <ellipse cx="136" cy="113" rx="18" ry="8" fill="#FFFFFF" transform="rotate(-12 136 113)"/>
+                <ellipse cx="164" cy="113" rx="18" ry="8" fill="#FFFFFF" transform="rotate(12 164 113)"/>
+                <circle cx="150" cy="104" r="7.5" fill="#E88C82"/>
+                <path d="M114 62 Q138 12 184 26 Q208 34 216 64 Q198 50 182 48 Q188 54 186 62 Z" fill="#B3162E"/>
+                <rect x="110" y="56" width="80" height="18" rx="9" fill="#FBF3E8"/>
+                <circle cx="216" cy="68" r="12" fill="#FBF3E8"/>
+            </g>`;
+
+        // Small Christmas items that take the stars' place
+        const CHRISTMAS_ITEMS = `
+            <defs>
+                <g id="ci-cane"><path d="M3 9 L3 -3 C3 -9 -4 -9 -4 -3" stroke="#FFFFFF" stroke-width="3.6" fill="none" stroke-linecap="round"/><path d="M3 9 L3 -3 C3 -9 -4 -9 -4 -3" stroke="#B3162E" stroke-width="3.6" fill="none" stroke-linecap="round" stroke-dasharray="2 2"/></g>
+                <g id="ci-ornament"><circle cx="0" cy="2" r="7" fill="#2E7D4F"/><rect x="-2.5" y="-7" width="5" height="3.5" fill="#E3B04B"/><path d="M-5 0 Q0 3 5 0" stroke="#FBF3E8" stroke-width="1.2" fill="none"/></g>
+                <g id="ci-gift"><rect x="-7" y="-5" width="14" height="12" fill="#B3162E"/><rect x="-1.5" y="-5" width="3" height="12" fill="#E3B04B"/><rect x="-7" y="-1" width="14" height="3" fill="#E3B04B"/><path d="M0 -5 C-4 -10 -7 -6 0 -5 C7 -6 4 -10 0 -5" fill="#E3B04B"/></g>
+                <g id="ci-mint"><circle cx="0" cy="0" r="7" fill="#FFFFFF"/><path d="M0 0 L0 -7 A7 7 0 0 1 6 -3.5 Z M0 0 L6 3.5 A7 7 0 0 1 0 7 Z M0 0 L-6 3.5 A7 7 0 0 1 -6 -3.5 Z" fill="#B3162E"/></g>
+            </defs>`;
+
         // Per-theme overlay art; `items` replace the stars with those symbols
         const MOON_SCENES = {
             ranch: { art: RANCH_HORSE_ART },
-            thanksgiving: { art: TURKEY_ART, defs: THANKSGIVING_ITEMS, items: ['ti-pumpkin', 'ti-leaf', 'ti-acorn', 'ti-corn', 'ti-pie'] }
+            thanksgiving: { art: TURKEY_ART, defs: THANKSGIVING_ITEMS, items: ['ti-pumpkin', 'ti-leaf', 'ti-acorn', 'ti-corn', 'ti-pie'] },
+            christmas: { art: SANTA_ART, defs: CHRISTMAS_ITEMS, items: ['ci-cane', 'ci-ornament', 'ci-gift', 'ci-mint'] }
         };
 
         // Full-screen moonrise celebrating whoever shot the moon. Tap, Escape or
