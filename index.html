@@ -371,11 +371,64 @@
             </button>
         </div>
 
-        <!-- GIN SETUP (placeholder until Gin scorekeeping is built) -->
-        <div id="gin-setup" class="hidden">
-            <div class="bg-slate-800/80 rounded-3xl p-6 border border-slate-700/50 shadow-xl text-center text-slate-400 text-sm">
-                Gin Rummy scorekeeping is coming soon.
+        <!-- GIN RUMMY SETUP -->
+        <div id="gin-setup" class="hidden space-y-6">
+            <!-- CARD 1: THE TWO PLAYERS -->
+            <div class="bg-slate-800/80 backdrop-blur-md rounded-3xl p-6 border border-slate-700/50 shadow-xl space-y-4">
+                <label class="block text-sm font-bold text-slate-300 uppercase tracking-wider border-b border-slate-700/40 pb-3">Players</label>
+                <div id="gin-players-container" class="space-y-3">
+                    <!-- Two player dropdowns injected here by JavaScript -->
+                </div>
             </div>
+
+            <!-- CARD 2: TARGET SCORE AND SCORING SETTINGS -->
+            <div class="bg-slate-800/80 backdrop-blur-md rounded-3xl p-6 border border-slate-700/50 shadow-xl space-y-4">
+                <label for="gin-target-score" class="block text-sm font-bold text-slate-300 uppercase tracking-wider">Play To</label>
+                <input type="number" id="gin-target-score" value="100" min="1" step="1" inputmode="numeric" class="w-full bg-slate-900 border-2 border-slate-700/60 rounded-2xl px-5 py-4 text-lg text-slate-100 placeholder-slate-600 focus:outline-none focus:border-rose-500 transition-colors h-14">
+                <details class="group bg-slate-900/80 border border-slate-700/50 rounded-2xl">
+                    <summary class="flex items-center justify-between cursor-pointer select-none px-4 py-3 text-sm font-bold text-slate-300 list-none [&::-webkit-details-marker]:hidden">
+                        Scoring settings
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="transition-transform group-open:rotate-180"><path d="M6 9l6 6 6-6"/></svg>
+                    </summary>
+                    <div class="px-4 pb-4 pt-1 space-y-3">
+                        <label class="flex items-center justify-between gap-3">
+                            <span class="text-sm text-slate-300">Gin bonus</span>
+                            <input type="number" id="gin-set-gin-bonus" value="25" min="0" step="1" inputmode="numeric" class="w-20 bg-slate-900 border-2 border-slate-700/60 rounded-xl px-3 py-2 text-right text-base font-bold text-slate-100 focus:outline-none focus:border-rose-500 transition-colors">
+                        </label>
+                        <label class="flex items-center justify-between gap-3">
+                            <span class="text-sm text-slate-300">Big gin bonus</span>
+                            <input type="number" id="gin-set-big-gin-bonus" value="31" min="0" step="1" inputmode="numeric" class="w-20 bg-slate-900 border-2 border-slate-700/60 rounded-xl px-3 py-2 text-right text-base font-bold text-slate-100 focus:outline-none focus:border-rose-500 transition-colors">
+                        </label>
+                        <label class="flex items-center justify-between gap-3">
+                            <span class="text-sm text-slate-300">Undercut bonus</span>
+                            <input type="number" id="gin-set-undercut-bonus" value="25" min="0" step="1" inputmode="numeric" class="w-20 bg-slate-900 border-2 border-slate-700/60 rounded-xl px-3 py-2 text-right text-base font-bold text-slate-100 focus:outline-none focus:border-rose-500 transition-colors">
+                        </label>
+                        <label class="flex items-center justify-between gap-3">
+                            <span class="text-sm text-slate-300">Game bonus</span>
+                            <input type="number" id="gin-set-game-bonus" value="100" min="0" step="1" inputmode="numeric" class="w-20 bg-slate-900 border-2 border-slate-700/60 rounded-xl px-3 py-2 text-right text-base font-bold text-slate-100 focus:outline-none focus:border-rose-500 transition-colors">
+                        </label>
+                        <label class="flex items-center justify-between gap-3">
+                            <span class="text-sm text-slate-300">Bonus per hand won</span>
+                            <input type="number" id="gin-set-box-bonus" value="25" min="0" step="1" inputmode="numeric" class="w-20 bg-slate-900 border-2 border-slate-700/60 rounded-xl px-3 py-2 text-right text-base font-bold text-slate-100 focus:outline-none focus:border-rose-500 transition-colors">
+                        </label>
+                        <label class="flex items-center justify-between gap-3">
+                            <span class="text-sm text-slate-300">Shutout doubles the winner's score</span>
+                            <input type="checkbox" id="gin-set-shutout-double" checked class="w-5 h-5 accent-[var(--accent)]">
+                        </label>
+                        <button type="button" onclick="resetGinSettings()" class="text-xs font-bold text-[var(--accent)] hover:opacity-70 underline underline-offset-2 transition-opacity">Reset to standard</button>
+                    </div>
+                </details>
+            </div>
+
+            <!-- CARD 3: GAME NAME -->
+            <div class="bg-slate-800/80 backdrop-blur-md rounded-3xl p-6 border border-slate-700/50 shadow-xl space-y-3">
+                <label for="gin-game-name" class="block text-sm font-bold text-slate-300 uppercase tracking-wider">Game Name (Optional)</label>
+                <input type="text" id="gin-game-name" placeholder="e.g. Sunday Rematch" class="w-full bg-slate-900 border-2 border-slate-700/60 rounded-2xl px-5 py-4 text-lg text-slate-100 placeholder-slate-600 focus:outline-none focus:border-rose-500 transition-colors h-14">
+            </div>
+
+            <button onclick="startGinGame()" class="w-full bg-[var(--accent)] hover:opacity-90 text-[var(--on-accent)] font-extrabold py-5 px-6 rounded-3xl shadow-lg active:scale-[0.98] transition-all text-center text-xl tracking-wide">
+                Begin Game
+            </button>
         </div>
 
         <div id="hearts-setup" class="space-y-6">
@@ -412,6 +465,26 @@
         <button onclick="startGame()" class="w-full bg-[var(--accent)] hover:opacity-90 text-[var(--on-accent)] font-extrabold py-5 px-6 rounded-3xl shadow-lg active:scale-[0.98] transition-all text-center text-xl tracking-wide">
             Begin Game
         </button>
+        </div>
+    </div>
+
+    <!-- GIN RUMMY ACTIVE GAME VIEW (hand entry and scoring come next) -->
+    <div id="gin-game-view" class="hidden max-w-md mx-auto px-4 pt-4 space-y-4">
+        <div class="flex items-center justify-between bg-slate-800/40 p-3 rounded-2xl border border-slate-700/30">
+            <div class="flex items-center space-x-2 min-w-0">
+                <span id="gin-badge-name" class="hidden px-2.5 py-1 rounded-md text-xs font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20 truncate"></span>
+                <span id="gin-target-display" class="text-xs text-slate-400 font-semibold uppercase tracking-wider whitespace-nowrap"></span>
+            </div>
+            <button onclick="confirmAbandonGinGame()" class="text-xs font-semibold text-rose-400 hover:text-rose-300 px-3 py-1.5 rounded-lg hover:bg-rose-500/10 transition-colors whitespace-nowrap">Abandon Game</button>
+        </div>
+
+        <div class="bg-slate-800/80 rounded-3xl p-4 border border-slate-700/50 shadow-xl">
+            <h2 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3 text-center">Scoreboard</h2>
+            <div id="gin-scoreboard" class="grid grid-cols-2 gap-2"></div>
+        </div>
+
+        <div class="bg-slate-800/80 rounded-3xl p-6 border border-slate-700/50 shadow-xl text-center text-slate-400 text-sm">
+            Hand entry is coming next.
         </div>
     </div>
 
@@ -905,13 +978,239 @@
 
         setGame(getCurrentGame());
 
+        // ── Gin Rummy setup ──────────────────────────────────────────────
+        const GIN_ACTIVE_GAME_KEY = "gin_active_game_v1";
+        const GIN_STANDARD_SETTINGS = {
+            ginBonus: 25,
+            bigGinBonus: 31,
+            undercutBonus: 25,
+            gameBonus: 100,
+            boxBonus: 25,
+            shutoutDoubles: true
+        };
+        const GIN_SETTING_INPUTS = {
+            ginBonus: 'gin-set-gin-bonus',
+            bigGinBonus: 'gin-set-big-gin-bonus',
+            undercutBonus: 'gin-set-undercut-bonus',
+            gameBonus: 'gin-set-game-bonus',
+            boxBonus: 'gin-set-box-bonus'
+        };
+        let ginGame = null; // { gameId, playerIds, targetScore, settings, gameName, hands, totals }
+        let pendingGinResume = null;
+
+        function getGinSeatSelections() {
+            return [0, 1].map((i) => {
+                const el = document.getElementById(`gin-player-select-${i}`);
+                return el ? el.value : '';
+            });
+        }
+
+        // Two seats; by default the first two family players
+        function renderGinPlayers(selections) {
+            const picks = selections || getGinSeatSelections();
+            const container = document.getElementById('gin-players-container');
+            container.innerHTML = [0, 1].map((i) => {
+                const selectedVal = picks[i] || (dbPlayers[i] ? dbPlayers[i].id : (dbPlayers[0]?.id || ''));
+                const options = dbPlayers.map((p) =>
+                    `<option value="${escapeHtml(p.id)}" ${p.id === selectedVal ? 'selected' : ''}>${escapeHtml(p.name)}</option>`
+                ).join('');
+                return `
+                    <select id="gin-player-select-${i}" onchange="checkNewGinPlayer(this, ${i})" aria-label="${i === 0 ? 'First' : 'Second'} player" class="w-full bg-slate-900 border-2 border-slate-700/50 rounded-xl px-4 py-4 text-slate-100 focus:outline-none focus:border-rose-500 text-lg font-bold cursor-pointer h-16 leading-normal">
+                        ${options}
+                        <option value="NEW_PLAYER">+ Add New Player</option>
+                    </select>`;
+            }).join('<div class="text-center text-xs font-bold text-slate-500 uppercase tracking-wider">vs</div>');
+
+            document.querySelectorAll('[id^="gin-player-select-"]').forEach((sel) => {
+                sel.dataset.prev = sel.value;
+            });
+        }
+
+        // "+ Add New Player" adds to the shared Players tab, same as Hearts
+        async function checkNewGinPlayer(selectElement, seatIndex) {
+            if (selectElement.value !== "NEW_PLAYER") {
+                selectElement.dataset.prev = selectElement.value;
+                return;
+            }
+
+            const previous = selectElement.dataset.prev;
+            const newName = prompt("Enter the new player's name:");
+            if (newName && newName.trim() !== "") {
+                const newId = "p_" + Date.now();
+                await fetch(WEB_APP_URL, {
+                    method: "POST",
+                    mode: "no-cors",
+                    body: JSON.stringify({ action: "addPlayer", name: newName, id: newId })
+                });
+                dbPlayers.push({ id: newId, name: newName });
+                const selections = getGinSeatSelections();
+                selections[seatIndex] = newId;
+                renderGinPlayers(selections);
+                renderPlayerSeats(); // keep the Hearts seats' list in step
+            } else {
+                selectElement.value = previous || dbPlayers[0].id;
+            }
+        }
+
+        function resetGinSettings() {
+            Object.keys(GIN_SETTING_INPUTS).forEach((key) => {
+                document.getElementById(GIN_SETTING_INPUTS[key]).value = GIN_STANDARD_SETTINGS[key];
+            });
+            document.getElementById('gin-set-shutout-double').checked = GIN_STANDARD_SETTINGS.shutoutDoubles;
+        }
+
+        // Whole number at or above `min`, or null
+        function readWholeNumber(id, min) {
+            const raw = document.getElementById(id).value.trim();
+            if (!/^\d+$/.test(raw)) return null;
+            const value = parseInt(raw, 10);
+            return value >= min ? value : null;
+        }
+
+        function startGinGame() {
+            const playerIds = getGinSeatSelections();
+            if (!playerIds[0] || !playerIds[1] || playerIds.includes('NEW_PLAYER')) {
+                showToast("Pick two players to begin");
+                return;
+            }
+            if (playerIds[0] === playerIds[1]) {
+                showToast("Pick two different players");
+                return;
+            }
+
+            const targetScore = readWholeNumber('gin-target-score', 1);
+            if (targetScore === null) {
+                showToast("Play To must be a whole number above 0");
+                return;
+            }
+
+            const settings = { shutoutDoubles: document.getElementById('gin-set-shutout-double').checked };
+            for (const key of Object.keys(GIN_SETTING_INPUTS)) {
+                const value = readWholeNumber(GIN_SETTING_INPUTS[key], 0);
+                if (value === null) {
+                    showToast("Scoring settings must be whole numbers, 0 or more");
+                    return;
+                }
+                settings[key] = value;
+            }
+
+            ginGame = {
+                gameId: "g_" + Date.now(),
+                playerIds,
+                targetScore,
+                settings,
+                gameName: document.getElementById('gin-game-name').value.trim(),
+                hands: [],
+                totals: [0, 0]
+            };
+            saveGinGameState();
+            showGinGameView();
+        }
+
+        function saveGinGameState() {
+            try { localStorage.setItem(GIN_ACTIVE_GAME_KEY, JSON.stringify(ginGame)); } catch (err) { /* ignore */ }
+        }
+
+        function clearGinGameState() {
+            try { localStorage.removeItem(GIN_ACTIVE_GAME_KEY); } catch (err) { /* ignore */ }
+        }
+
+        function showGinGameView() {
+            document.getElementById('setup-view').classList.add('hidden');
+            document.getElementById('gin-game-view').classList.remove('hidden');
+
+            const badge = document.getElementById('gin-badge-name');
+            badge.textContent = ginGame.gameName;
+            badge.classList.toggle('hidden', !ginGame.gameName);
+            document.getElementById('gin-target-display').textContent = `Playing to ${ginGame.targetScore}`;
+
+            document.getElementById('gin-scoreboard').innerHTML = ginGame.playerIds.map((id, i) => `
+                <div class="bg-slate-900/60 rounded-2xl p-3 border border-slate-700/50 text-center min-w-0">
+                    <div class="text-sm font-bold text-slate-200 truncate">${escapeHtml(getPlayerDisplayName(id))}</div>
+                    <div class="font-display text-3xl font-extrabold text-[var(--accent)]">${ginGame.totals[i]}</div>
+                </div>`).join('');
+            window.scrollTo(0, 0);
+        }
+
+        function confirmAbandonGinGame() {
+            const confirmBox = document.createElement('div');
+            confirmBox.id = 'gin-abandon-modal';
+            confirmBox.className = "fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4";
+            confirmBox.innerHTML = `
+                <div class="bg-slate-800 border border-slate-700/50 p-6 rounded-3xl w-full max-w-sm text-center shadow-2xl">
+                    <h3 class="text-lg font-bold text-white mb-2">Abandon Game?</h3>
+                    <p class="text-slate-400 text-sm mb-6">This game won't be saved.</p>
+                    <div class="flex space-x-3">
+                        <button onclick="document.getElementById('gin-abandon-modal').remove()" class="flex-1 bg-slate-700 text-slate-300 py-3 rounded-xl font-bold hover:bg-slate-600 transition-colors">Keep Playing</button>
+                        <button onclick="abandonGinGame()" class="flex-1 bg-[var(--accent)] text-[var(--on-accent)] py-3 rounded-xl font-bold hover:opacity-90 transition-colors">Abandon</button>
+                    </div>
+                </div>`;
+            document.body.appendChild(confirmBox);
+        }
+
+        function abandonGinGame() {
+            document.getElementById('gin-abandon-modal').remove();
+            clearGinGameState();
+            ginGame = null;
+            document.getElementById('gin-game-view').classList.add('hidden');
+            document.getElementById('setup-view').classList.remove('hidden');
+        }
+
+        function promptResumeGinGame(state) {
+            pendingGinResume = state;
+            const names = state.playerIds.map((id) => escapeHtml(getPlayerDisplayName(id))).join(' vs ');
+            const handCount = state.hands.length;
+            const confirmBox = document.createElement('div');
+            confirmBox.id = 'gin-resume-modal';
+            confirmBox.className = "fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4";
+            confirmBox.innerHTML = `
+                <div class="bg-slate-800 border border-slate-700/50 p-6 rounded-3xl w-full max-w-sm text-center shadow-2xl">
+                    <h3 class="text-lg font-bold text-white mb-2">Resume Gin Rummy Game?</h3>
+                    <p class="text-slate-400 text-sm mb-6">${names} was still going (${handCount} ${handCount === 1 ? 'hand' : 'hands'} played) when this closed.</p>
+                    <div class="flex space-x-3">
+                        <button onclick="discardGinGame()" class="flex-1 bg-slate-700 text-slate-300 py-3 rounded-xl font-bold hover:bg-slate-600 transition-colors">Discard</button>
+                        <button onclick="resumeGinGame()" class="flex-1 bg-[var(--success)] text-[var(--on-success)] py-3 rounded-xl font-bold hover:opacity-90 transition-colors">Resume</button>
+                    </div>
+                </div>`;
+            document.body.appendChild(confirmBox);
+        }
+
+        function discardGinGame() {
+            clearGinGameState();
+            pendingGinResume = null;
+            document.getElementById('gin-resume-modal').remove();
+        }
+
+        function resumeGinGame() {
+            ginGame = pendingGinResume;
+            pendingGinResume = null;
+            document.getElementById('gin-resume-modal').remove();
+            setGame('gin');
+            showGinGameView();
+            showToast("Resumed your Gin Rummy game");
+        }
+
+        function loadSavedGinGame() {
+            try {
+                const state = JSON.parse(localStorage.getItem(GIN_ACTIVE_GAME_KEY) || 'null');
+                if (state && state.gameId && Array.isArray(state.playerIds) && Array.isArray(state.hands)) return state;
+            } catch (err) { /* fall through */ }
+            clearGinGameState();
+            return null;
+        }
+
         // Bootstrapping
         window.addEventListener('DOMContentLoaded', async () => {
             await fetchPlayersFromSheet();
             renderPlayerSeats(); // Trigger initial seat generation
+            renderGinPlayers();
 
+            // Offer one saved game: the Gin one when Gin is picked (or it's the only one), otherwise Hearts
             const saved = localStorage.getItem(ACTIVE_GAME_KEY);
-            if (saved) {
+            const savedGin = loadSavedGinGame();
+            if (savedGin && (getCurrentGame() === 'gin' || !saved)) {
+                promptResumeGinGame(savedGin);
+            } else if (saved) {
                 try {
                     const state = JSON.parse(saved);
                     if (state && state.currentGameId) {
