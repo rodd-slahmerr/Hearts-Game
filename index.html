@@ -327,7 +327,47 @@
             to { opacity: 0; }
         }
 
+        /* ---- Gin Rummy celebrations: full-screen Gin!, smaller Undercut! ---- */
+        #gin-overlay, #gin-undercut { cursor: pointer; }
+        #gin-overlay.is-leaving, #gin-undercut.is-leaving { animation: moon-overlay-out 0.3s ease-in forwards; }
+        #gin-overlay .gin-card {
+            transform-box: view-box; transform-origin: 100px 200px;
+            transform: rotate(var(--fan));
+            animation: gin-fan 0.75s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+        }
+        #gin-overlay .gin-hand { animation: gin-hand-in 0.5s ease-out both; }
+        #gin-overlay .moon-halo { transform-origin: center; transform-box: fill-box; animation: moon-glow 2.4s ease-in-out infinite; }
+        #gin-overlay .moon-star { animation: star-twinkle 1.6s ease-in-out infinite; }
+        #gin-overlay .moon-text { animation: moon-text-in 0.5s ease-out 0.7s both; }
+        #gin-undercut .undercut-card { animation: undercut-slam 0.55s cubic-bezier(0.3, 1.4, 0.5, 1) both; }
+
+        @keyframes gin-hand-in {
+            from { opacity: 0; transform: translateY(40vh); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes gin-fan {
+            from { transform: rotate(0deg); }
+            40% { transform: rotate(0deg); }
+            to { transform: rotate(var(--fan)); }
+        }
+        @keyframes undercut-slam {
+            0% { opacity: 0; transform: scale(1.6) rotate(-8deg); }
+            60% { opacity: 1; transform: scale(0.95) rotate(2deg); }
+            80% { transform: scale(1.02) rotate(-1deg); }
+            100% { opacity: 1; transform: scale(1) rotate(0deg); }
+        }
+
         /* Keep the moment, drop the motion */
+        @media (prefers-reduced-motion: reduce) {
+            #gin-overlay .gin-card,
+            #gin-overlay .gin-hand,
+            #gin-overlay .moon-halo,
+            #gin-overlay .moon-star,
+            #gin-overlay .moon-text,
+            #gin-undercut .undercut-card { animation: none; }
+            #gin-overlay .moon-star { opacity: 0.7; }
+        }
+
         @media (prefers-reduced-motion: reduce) {
             #moon-overlay .moon-body,
             #moon-overlay .moon-halo,
@@ -1539,6 +1579,7 @@
             recomputeGinTotals();
             saveGinGameState();
             shipGinHand(hand);
+            celebrateGinHand(hand);
 
             if (hand.winnerIdx !== null && ginGame.totals[hand.winnerIdx] >= ginGame.targetScore) {
                 finishGinGame('target');
@@ -1597,6 +1638,111 @@
                         </div>
                     </div>`;
             }).join('');
+        }
+
+        // ── Gin Rummy celebrations ───────────────────────────────────────
+        // Suit pips for the year-round themes' backdrop (seasonal themes reuse
+        // their moon-shot symbols)
+        const GIN_PIPS = `
+            <defs>
+                <path id="gp-heart" d="M0 7 L-6.5 0 A3.6 3.6 0 0 1 0 -5 A3.6 3.6 0 0 1 6.5 0 Z" fill="var(--moon)"/>
+                <path id="gp-diamond" d="M0 -7 L5 0 L0 7 L-5 0 Z" fill="var(--moon)"/>
+                <g id="gp-spade" fill="var(--moon)"><path d="M0 -7 L6.5 0 A3.6 3.6 0 0 1 0 5 A3.6 3.6 0 0 1 -6.5 0 Z"/><path d="M0 2 L2.5 7 L-2.5 7 Z"/></g>
+                <g id="gp-club" fill="var(--moon)"><circle cx="0" cy="-3.5" r="3"/><circle cx="-3.6" cy="1.5" r="3"/><circle cx="3.6" cy="1.5" r="3"/><path d="M0 1 L2.5 7 L-2.5 7 Z"/></g>
+            </defs>`;
+
+        // A heart run (aces are low, so it never ends on an ace) fanned out
+        // from below the centre of a 200x200 box
+        function ginHandArt(count) {
+            const ranks = count === 7 ? ['6', '7', '8', '9', '10', 'J', 'Q'] : ['9', '10', 'J', 'Q', 'K'];
+            const spread = count === 7 ? 13 : 15;
+            return ranks.map((rank, i) => {
+                const fan = (i - (ranks.length - 1) / 2) * spread;
+                return `
+                    <g class="gin-card" style="--fan:${fan}deg">
+                        <rect x="68" y="62" width="64" height="92" rx="7" fill="#FFFDF7" stroke="#2A2016" stroke-opacity="0.25"/>
+                        <text x="75" y="80" font-size="15" font-weight="700" fill="#B3162E" font-family="Georgia, serif">${rank}</text>
+                        <path d="M0 7 L-6.5 0 A3.6 3.6 0 0 1 0 -5 A3.6 3.6 0 0 1 6.5 0 Z" transform="translate(100 112) scale(2.2)" fill="#B3162E"/>
+                    </g>`;
+            }).join('');
+        }
+
+        function ginBackdrop() {
+            const scene = MOON_SCENES[getCurrentTheme()];
+            const seasonal = scene && scene.items;
+            const items = seasonal ? scene.items : ['gp-heart', 'gp-spade', 'gp-diamond', 'gp-club'];
+            return (seasonal ? scene.defs : GIN_PIPS) + MOON_STARS.map(([x, y, r], i) => {
+                const delay = `animation-delay:${(i * 0.37) % 1.6}s`;
+                const tilt = ((i * 47) % 60) - 30;
+                const scale = seasonal ? 0.16 + r * 0.08 : 0.25 + r * 0.2;
+                return `<use class="moon-star" href="#${items[i % items.length]}" transform="translate(${x} ${y}) rotate(${tilt}) scale(${scale})" style="${delay}"/>`;
+            }).join('');
+        }
+
+        // Wires up tap, Escape and a timeout to dismiss an overlay
+        function showGinOverlay(overlay, duration) {
+            let dismissed = false;
+            const onKey = (e) => { if (e.key === 'Escape') dismiss(); };
+            const timer = setTimeout(dismiss, duration);
+            function dismiss() {
+                if (dismissed) return;
+                dismissed = true;
+                clearTimeout(timer);
+                document.removeEventListener('keydown', onKey);
+                overlay.classList.add('is-leaving');
+                setTimeout(() => overlay.remove(), 300); // matches moon-overlay-out
+            }
+            overlay.addEventListener('click', dismiss);
+            document.addEventListener('keydown', onKey);
+            document.body.appendChild(overlay);
+        }
+
+        // Full-screen fanned hand for gin (5 cards) or big gin (7 cards)
+        function showGinCelebration(name, bigGin, points) {
+            document.getElementById('gin-overlay')?.remove();
+            const overlay = document.createElement('div');
+            overlay.id = 'gin-overlay';
+            overlay.className = "fixed inset-0 z-[110] backdrop-blur-sm flex flex-col items-center justify-center p-6";
+            overlay.style.background = "rgba(0,0,0,0.8)";
+            overlay.innerHTML = `
+                <svg class="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid slice" aria-hidden="true">${ginBackdrop()}</svg>
+                <svg class="gin-hand relative w-56 h-56" viewBox="0 0 200 200" overflow="visible" aria-hidden="true">
+                    <defs>
+                        <filter id="gin-blur" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="14"/></filter>
+                    </defs>
+                    <ellipse class="moon-halo" cx="100" cy="110" rx="${bigGin ? 98 : 82}" ry="72" fill="var(--moon-glow)" filter="url(#gin-blur)"/>
+                    ${ginHandArt(bigGin ? 7 : 5)}
+                </svg>
+                <div class="moon-text relative text-center mt-4" role="status" aria-live="polite">
+                    <div class="font-display text-3xl font-extrabold text-[var(--moon)]" style="letter-spacing: var(--word-tracking); text-transform: var(--word-case);">${escapeHtml(name)} went ${bigGin ? 'big gin' : 'gin'}!</div>
+                    <div class="text-sm mt-2 text-[var(--moon)] opacity-75">+${points} points</div>
+                </div>`;
+            showGinOverlay(overlay, 2800);
+        }
+
+        // Smaller moment: a card slams down over the game
+        function showUndercutCelebration(name, knockerName, points) {
+            document.getElementById('gin-undercut')?.remove();
+            const overlay = document.createElement('div');
+            overlay.id = 'gin-undercut';
+            overlay.className = "fixed inset-0 z-[110] flex items-center justify-center p-6";
+            overlay.style.background = "rgba(0,0,0,0.35)";
+            overlay.innerHTML = `
+                <div class="undercut-card bg-slate-800 border-2 border-[var(--accent)] rounded-3xl px-8 py-6 text-center shadow-2xl max-w-xs w-full" role="status" aria-live="polite">
+                    <div class="font-display text-4xl font-extrabold text-[var(--accent)]" style="letter-spacing: var(--word-tracking); text-transform: var(--word-case);">Undercut!</div>
+                    <div class="text-sm text-slate-300 mt-2">${escapeHtml(name)} caught ${escapeHtml(knockerName)}</div>
+                    <div class="font-display text-2xl font-extrabold text-slate-200 mt-1">+${points}</div>
+                </div>`;
+            showGinOverlay(overlay, 1800);
+        }
+
+        function celebrateGinHand(hand) {
+            const names = ginGame.playerIds.map((id) => getPlayerDisplayName(id));
+            if (hand.result === 'gin' || hand.result === 'bigGin') {
+                showGinCelebration(names[hand.winnerIdx], hand.result === 'bigGin', hand.points);
+            } else if (hand.result === 'undercut') {
+                showUndercutCelebration(names[hand.winnerIdx], names[hand.knockerIdx], hand.points);
+            }
         }
 
         // ── Gin Rummy end of game ────────────────────────────────────────
