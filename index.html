@@ -29,6 +29,7 @@
             --font-body:'Segoe UI','Seravek','Helvetica Neue',Arial,sans-serif;
             --radius-lg:20px; --radius-md:14px; --radius-sm:10px;
             --word-tracking:0em; --word-case:none;
+            --moon:#FBF6E6; --moon-glow:rgba(160,196,150,0.55);
         }
 
         [data-theme="dark"] {
@@ -43,6 +44,7 @@
             --font-body:'Segoe UI','Seravek','Helvetica Neue',Arial,sans-serif;
             --radius-lg:18px; --radius-md:13px; --radius-sm:9px;
             --word-tracking:0em; --word-case:none;
+            --moon:#F6EBD3; --moon-glow:rgba(201,138,43,0.55);
         }
 
         [data-theme="ranch"] {
@@ -57,6 +59,7 @@
             --font-body:'Segoe UI','Seravek','Helvetica Neue',Arial,sans-serif;
             --radius-lg:8px; --radius-md:6px; --radius-sm:5px;
             --word-tracking:0.03em; --word-case:uppercase;
+            --moon:#F1E6D2; --moon-glow:rgba(241,230,210,0.5);
         }
 
         body {
@@ -161,6 +164,43 @@
         html .bg-slate-300\/15 { background-color: var(--silver-soft); }
         html .border-orange-500\/20,
         html .border-slate-300\/20 { border-color: var(--silver-soft); }
+
+        /* ---- Shoot-the-moon celebration overlay ---- */
+        #moon-overlay { cursor: pointer; }
+        #moon-overlay.is-leaving { animation: moon-overlay-out 0.3s ease-in forwards; }
+        #moon-overlay .moon-body { animation: moon-rise 1.2s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+        #moon-overlay .moon-halo { transform-origin: center; transform-box: fill-box; animation: moon-glow 2.4s ease-in-out infinite; }
+        #moon-overlay .moon-star { animation: star-twinkle 1.6s ease-in-out infinite; }
+        #moon-overlay .moon-text { animation: moon-text-in 0.5s ease-out 0.8s both; }
+
+        @keyframes moon-rise {
+            from { transform: translateY(60vh) scale(0.85); }
+            to { transform: translateY(0) scale(1); }
+        }
+        @keyframes moon-glow {
+            0%, 100% { opacity: 0.55; transform: scale(1); }
+            50% { opacity: 0.9; transform: scale(1.08); }
+        }
+        @keyframes star-twinkle {
+            0%, 100% { opacity: 0.25; }
+            50% { opacity: 1; }
+        }
+        @keyframes moon-text-in {
+            from { opacity: 0; transform: translateY(12px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes moon-overlay-out {
+            to { opacity: 0; }
+        }
+
+        /* Keep the moment, drop the motion */
+        @media (prefers-reduced-motion: reduce) {
+            #moon-overlay .moon-body,
+            #moon-overlay .moon-halo,
+            #moon-overlay .moon-star,
+            #moon-overlay .moon-text { animation: none; }
+            #moon-overlay .moon-star { opacity: 0.7; }
+        }
     </style>
     <script>
         // Apply saved theme before first paint to avoid a flash of the default theme
@@ -960,8 +1000,9 @@ async function checkNewPlayer(selectElement, seatIndex) {
             const btn = document.getElementById('btn-advance');
 
             if (isMoonShot) {
-                badge.className = "px-4 py-2 rounded-xl text-sm font-bold mb-3 flex items-center space-x-2 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
-                text.innerHTML = `🌙 Moon Shot Validated`;
+                // The moon animation already announces it; no badge needed
+                badge.className = "hidden";
+                text.innerHTML = '';
                 btn.disabled = false;
                 btn.className = "w-full py-4 rounded-2xl bg-[var(--success)] hover:opacity-90 text-[var(--on-success)] font-extrabold shadow-lg active:scale-[0.98] cursor-pointer transition-all duration-200";
             } else if (remaining === 0) {
@@ -981,6 +1022,105 @@ async function checkNewPlayer(selectElement, seatIndex) {
             }
         }
 
+        // Fixed star field (x, y in a 100x100 box, radius) so the layout is stable
+        const MOON_STARS = [
+            [8, 12, 0.7], [22, 6, 0.5], [35, 18, 0.9], [51, 8, 0.6], [66, 15, 0.8], [81, 7, 0.5],
+            [93, 20, 0.7], [12, 32, 0.5], [88, 38, 0.9], [5, 52, 0.8], [95, 58, 0.5], [16, 70, 0.6],
+            [84, 74, 0.7], [27, 86, 0.9], [44, 93, 0.5], [61, 88, 0.7], [74, 95, 0.6], [92, 88, 0.8]
+        ];
+
+        // Moon face, drawn over the glowing halo in a 200x200 box
+        const MOON_ART = `
+            <circle cx="100" cy="100" r="62" fill="var(--moon)"/>
+            <circle cx="78" cy="82" r="11" fill="#3A3226" opacity="0.11"/>
+            <circle cx="118" cy="72" r="7" fill="#3A3226" opacity="0.1"/>
+            <circle cx="112" cy="118" r="14" fill="#3A3226" opacity="0.11"/>
+            <circle cx="80" cy="128" r="6" fill="#3A3226" opacity="0.09"/>`;
+
+        // Ranch theme swaps the moon for a black horse looking straight at the
+        // player, with a crescent "C" marking in the fur of his forehead,
+        // outlined in cream against the cream halo
+        const RANCH_HORSE_ART = `
+            <defs>
+                <filter id="horse-fur" x="-30%" y="-30%" width="160%" height="160%">
+                    <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" result="noise"/>
+                    <feDisplacementMap in="SourceGraphic" in2="noise" scale="2.4"/>
+                    <feGaussianBlur stdDeviation="0.35"/>
+                </filter>
+            </defs>
+            <g stroke="var(--moon)" stroke-opacity="0.85" stroke-width="2" stroke-linejoin="round">
+                <path d="M68 140 C66 166 52 186 28 200 L172 200 C148 186 134 166 132 140 Z" fill="#151110"/>
+                <path d="M68 76 C58 58 60 40 72 26 C82 38 88 52 90 64 Z" fill="#0E0B0A"/>
+                <path d="M132 76 C142 58 140 40 128 26 C118 38 112 52 110 64 Z" fill="#0E0B0A"/>
+                <path d="M100 52 C124 52 142 64 144 86 C146 108 136 126 130 142 C126 154 130 170 126 182
+                         C120 194 110 198 100 198 C90 198 80 194 74 182 C70 170 74 154 70 142
+                         C64 126 54 108 56 86 C58 64 76 52 100 52 Z" fill="#0E0B0A"/>
+            </g>
+            <path d="M72 34 C78 44 82 54 84 64 L72 72 C68 58 68 46 72 34 Z" fill="#241C1A"/>
+            <path d="M128 34 C122 44 118 54 116 64 L128 72 C132 58 132 46 128 34 Z" fill="#241C1A"/>
+            <path d="M80 58 C90 54 110 54 120 58 C116 64 110 68 106 72 C104 68 102 66 100 64
+                     C98 66 96 68 94 72 C90 68 84 64 80 58 Z" fill="#1C1614"/>
+            <g filter="url(#horse-fur)">
+                <path d="M103 72 A10.5 10.5 0 1 0 103 93 A13 13 0 0 1 103 72 Z" fill="#EDE2CC"/>
+                <g stroke="#EDE2CC" stroke-width="0.7" stroke-linecap="round" opacity="0.6" fill="none">
+                    <path d="M95 74 L93.5 72.5"/>
+                    <path d="M92 78 L90.2 77.4"/>
+                    <path d="M91.5 83 L89.6 83.4"/>
+                    <path d="M92.5 88 L90.8 89.2"/>
+                    <path d="M96 91.5 L95 93.2"/>
+                </g>
+            </g>
+            <ellipse cx="70" cy="108" rx="6" ry="8" fill="#2E2624" transform="rotate(-12 70 108)"/>
+            <ellipse cx="130" cy="108" rx="6" ry="8" fill="#2E2624" transform="rotate(12 130 108)"/>
+            <circle cx="71.5" cy="105" r="2" fill="var(--moon)" opacity="0.85"/>
+            <circle cx="128.5" cy="105" r="2" fill="var(--moon)" opacity="0.85"/>
+            <ellipse cx="89" cy="182" rx="4.5" ry="6" fill="#2A2220" transform="rotate(15 89 182)"/>
+            <ellipse cx="111" cy="182" rx="4.5" ry="6" fill="#2A2220" transform="rotate(-15 111 182)"/>`;
+
+        // Full-screen moonrise celebrating whoever shot the moon. Tap, Escape or
+        // ~2.6s dismisses it.
+        function showMoonAnimation(name) {
+            const existing = document.getElementById('moon-overlay');
+            if (existing) existing.remove();
+
+            const stars = MOON_STARS.map(([x, y, r], i) =>
+                `<circle class="moon-star" cx="${x}" cy="${y}" r="${r * 0.6}" fill="var(--moon)" style="animation-delay:${(i * 0.37) % 1.6}s"/>`
+            ).join('');
+
+            const overlay = document.createElement('div');
+            overlay.id = 'moon-overlay';
+            overlay.className = "fixed inset-0 z-[110] backdrop-blur-sm flex flex-col items-center justify-center p-6";
+            overlay.style.background = "rgba(0,0,0,0.8)"; // night sky in every theme
+            overlay.innerHTML = `
+                <svg class="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid slice" aria-hidden="true">${stars}</svg>
+                <svg class="moon-body relative w-48 h-48" viewBox="0 0 200 200" aria-hidden="true">
+                    <defs>
+                        <filter id="moon-blur" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="12"/></filter>
+                    </defs>
+                    <circle class="moon-halo" cx="100" cy="100" r="78" fill="var(--moon-glow)" filter="url(#moon-blur)"/>
+                    ${getCurrentTheme() === 'ranch' ? RANCH_HORSE_ART : MOON_ART}
+                </svg>
+                <div class="moon-text relative text-center mt-6" role="status" aria-live="polite">
+                    <div class="font-display text-3xl font-extrabold text-[var(--moon)]" style="letter-spacing: var(--word-tracking); text-transform: var(--word-case);">${escapeHtml(name)} shot the moon</div>
+                    <div class="text-sm mt-2 text-[var(--moon)] opacity-75">Everyone else takes 26</div>
+                </div>`;
+
+            let dismissed = false;
+            const onKey = (e) => { if (e.key === 'Escape') dismiss(); };
+            const timer = setTimeout(dismiss, 2600);
+            function dismiss() {
+                if (dismissed) return;
+                dismissed = true;
+                clearTimeout(timer);
+                document.removeEventListener('keydown', onKey);
+                overlay.classList.add('is-leaving');
+                setTimeout(() => overlay.remove(), 300); // matches moon-overlay-out
+            }
+            overlay.addEventListener('click', dismiss);
+            document.addEventListener('keydown', onKey);
+            document.body.appendChild(overlay);
+        }
+
         function triggerShootMoon(shooterIdx) {
             for (let i = 0; i < activePlayerCount; i++) {
                 const el = document.getElementById(`round-score-p${i}`);
@@ -991,7 +1131,7 @@ async function checkNewPlayer(selectElement, seatIndex) {
                 }
             }
             runScoreValidation();
-            showToast(`${getPlayerDisplayName(selectedPlayerIds[shooterIdx])} shot the Moon! 🌙`);
+            showMoonAnimation(getPlayerDisplayName(selectedPlayerIds[shooterIdx]));
         }
 
         function submitRound() {
