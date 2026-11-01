@@ -12,6 +12,17 @@
 //   "Games"   — columns: [Game_ID, Ended_At, Reason]; one row per game that
 //               was finished (reached 100 or ended early). Abandoned games
 //               never get a row. Created automatically on first use.
+//   "GinHands" — one row per Gin Rummy hand; columns in GIN_HANDS_HEADERS.
+//               Undo removes the row. Created automatically on first use.
+//   "GinGames" — one row per finished Gin Rummy game (reached the target or
+//               ended early); columns in GIN_GAMES_HEADERS. Abandoned games
+//               never get a row. Created automatically on first use.
+// Players is shared: Hearts and Gin Rummy use the same player IDs.
+
+const GIN_HANDS_HEADERS = ["Game_ID", "Hand_Number", "Timestamp", "Knocker_ID", "Result",
+  "Knocker_Deadwood", "Defender_Deadwood", "Points", "Winner_ID"];
+const GIN_GAMES_HEADERS = ["Game_ID", "Ended_At", "Reason", "Game_Name", "Player_1", "Player_2",
+  "Winner_ID", "Player_1_Score", "Player_2_Score", "Hands_Played", "Target_Score", "Settings"];
 
 function doGet(e) {
   const action = e.parameter.action;
@@ -21,7 +32,113 @@ function doGet(e) {
   if (action === "getHistory") {
     return getHistory();
   }
+  if (action === "getGinHistory") {
+    return getGinHistory();
+  }
   return getPlayers();
+}
+
+function jsonOutput(payload) {
+  return ContentService
+    .createTextOutput(JSON.stringify(payload))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function getOrCreateSheet(ss, name, headers) {
+  let sheet = ss.getSheetByName(name);
+  if (!sheet) {
+    sheet = ss.insertSheet(name);
+    sheet.appendRow(headers);
+  }
+  return sheet;
+}
+
+// Rows of a sheet as objects keyed by its header row; [] if the sheet is missing
+function readRows(ss, name) {
+  const sheet = ss.getSheetByName(name);
+  if (!sheet) return [];
+  const values = sheet.getDataRange().getValues();
+  const headers = values[0] || [];
+  return values.slice(1).filter(function (row) { return row[0]; }).map(function (row) {
+    const record = {};
+    headers.forEach(function (header, i) { record[header] = row[i]; });
+    return record;
+  });
+}
+
+// Every Gin Rummy hand and finished game, plus every player (active or not)
+function getGinHistory() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const playerData = ss.getSheetByName("Players").getDataRange().getValues();
+  const players = [];
+  for (let i = 1; i < playerData.length; i++) {
+    players.push({ id: playerData[i][0], name: playerData[i][1] });
+  }
+  const games = readRows(ss, "GinGames").map(function (game) {
+    try { game.Settings = JSON.parse(game.Settings); } catch (err) { game.Settings = null; }
+    return game;
+  });
+  return jsonOutput({
+    status: "success",
+    players: players,
+    ginHands: readRows(ss, "GinHands"),
+    ginGames: games
+  });
+}
+
+// Deletes rows (bottom up) whose Game_ID matches and that `matches` accepts
+function deleteGinRows(sheet, gameId, matches) {
+  const values = sheet.getDataRange().getValues();
+  let removed = 0;
+  for (let i = values.length - 1; i >= 1; i--) {
+    if (String(values[i][0]) !== String(gameId)) continue;
+    if (!matches(values[i])) continue;
+    sheet.deleteRow(i + 1);
+    removed++;
+  }
+  return removed;
+}
+
+function handleGinPost(ss, data) {
+  const handsSheet = getOrCreateSheet(ss, "GinHands", GIN_HANDS_HEADERS);
+  const gamesSheet = getOrCreateSheet(ss, "GinGames", GIN_GAMES_HEADERS);
+
+  if (data.action === "addGinHand") {
+    handsSheet.appendRow(GIN_HANDS_HEADERS.map(function (key) { return data[key]; }));
+    return { status: "success" };
+  }
+
+  // Undo: remove a hand already sent. Only rows stamped at or before the undo
+  // are removed, so a re-entered hand that lands first isn't deleted with it.
+  if (data.action === "deleteGinHand") {
+    const before = data.Before ? new Date(data.Before).getTime() : Infinity;
+    const removed = deleteGinRows(handsSheet, data.Game_ID, function (row) {
+      return Number(row[1]) === Number(data.Hand_Number) && new Date(row[2]).getTime() <= before;
+    });
+    return { status: "success", removed: removed };
+  }
+
+  // A finished game; replaces any earlier row for the same game, so a game
+  // reopened from its summary and finished again has a single row
+  if (data.action === "endGinGame") {
+    deleteGinRows(gamesSheet, data.Game_ID, function () { return true; });
+    const row = GIN_GAMES_HEADERS.map(function (key) {
+      return key === "Settings" ? JSON.stringify(data.Settings || {}) : data[key];
+    });
+    gamesSheet.appendRow(row);
+    return { status: "success" };
+  }
+
+  // Back to the game from its summary: it isn't finished after all
+  if (data.action === "reopenGinGame") {
+    const before = data.Before ? new Date(data.Before).getTime() : Infinity;
+    const removed = deleteGinRows(gamesSheet, data.Game_ID, function (row) {
+      return new Date(row[1]).getTime() <= before;
+    });
+    return { status: "success", removed: removed };
+  }
+
+  return null;
 }
 
 // Raw score rows plus every player (active or not), so the Stats dashboard
@@ -212,6 +329,16 @@ function doPost(e) {
   }
 
   const ss = SpreadsheetApp.getActiveSpreadsheet();
+
+  if (["addGinHand", "deleteGinHand", "endGinGame", "reopenGinGame"].indexOf(data.action) !== -1) {
+    const lock = LockService.getScriptLock();
+    lock.waitLock(10000);
+    try {
+      return jsonOutput(handleGinPost(ss, data));
+    } finally {
+      lock.releaseLock();
+    }
+  }
 
   if (data.action === "addPlayer") {
     const playerSheet = ss.getSheetByName("Players");

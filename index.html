@@ -635,7 +635,7 @@
         <button id="gin-final-back" onclick="reopenGinGame()" class="w-full bg-slate-800/80 border border-slate-700/50 text-slate-300 font-bold py-3 px-6 rounded-2xl hover:bg-slate-700/50 transition-colors"></button>
     </div>
 
-    <!-- GIN STATS VIEW (placeholder; Gin stats come from the Gin sheet tabs, separate from Hearts) -->
+    <!-- GIN STATS VIEW (reads the GinHands / GinGames sheet tabs, separate from Hearts) -->
     <div id="gin-stats-view" class="hidden max-w-md mx-auto px-4 pt-8 pb-16 space-y-6">
         <div class="flex items-center space-x-3">
             <button onclick="closeStatsView()" class="text-slate-300 hover:text-white bg-slate-800/80 hover:bg-slate-800 border border-slate-700/50 px-3 py-2 rounded-xl transition-all active:scale-95">
@@ -643,8 +643,11 @@
             </button>
             <h1 class="font-display text-2xl font-extrabold tracking-tight text-[var(--accent)]" style="letter-spacing: var(--word-tracking); text-transform: var(--word-case);">Gin Rummy Stats</h1>
         </div>
-        <div class="bg-slate-800/80 rounded-3xl p-6 border border-slate-700/50 shadow-xl text-center text-slate-400 text-sm">
-            No Gin games recorded yet.
+        <div id="gin-stats-loading" class="text-center text-slate-400 text-sm py-10">Loading history&hellip;</div>
+        <div id="gin-stats-error" class="hidden text-center text-rose-400 text-sm py-10"></div>
+        <div id="gin-stats-content" class="hidden bg-slate-800/80 rounded-3xl p-4 border border-slate-700/50 shadow-xl">
+            <h2 id="gin-stats-count" class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 text-center"></h2>
+            <div id="gin-stats-games" class="text-sm"></div>
         </div>
     </div>
 
@@ -1357,6 +1360,7 @@
             ginGame.hands.push(hand);
             recomputeGinTotals();
             saveGinGameState();
+            shipGinHand(hand);
 
             if (ginGame.totals[hand.winnerIdx] >= ginGame.targetScore) {
                 finishGinGame('target');
@@ -1371,6 +1375,7 @@
         function undoGinHand() {
             const hand = ginGame.hands.pop();
             if (!hand) return;
+            deleteGinHandFromCloud(hand.handNumber);
             recomputeGinTotals();
             saveGinGameState();
             renderGinScoreboard();
@@ -1464,6 +1469,7 @@
             ginGame.endReason = reason;
             clearGinGameState();
             const { players, winnerIdx } = finalGinScores(reason);
+            recordGinGameEnd(reason, players, winnerIdx);
             const names = ginGame.playerIds.map((id) => escapeHtml(getPlayerDisplayName(id)));
 
             document.getElementById('gin-game-view').classList.add('hidden');
@@ -1509,6 +1515,7 @@
         function reopenGinGame() {
             const reason = ginGame.endReason;
             delete ginGame.endReason;
+            postGinToSheet({ action: "reopenGinGame", Game_ID: ginGame.gameId, Before: new Date().toISOString() });
             document.getElementById('gin-gameover-view').classList.add('hidden');
             showGinGameView();
             saveGinGameState();
@@ -1520,6 +1527,118 @@
             document.getElementById('gin-gameover-view').classList.add('hidden');
             document.getElementById('setup-view').classList.remove('hidden');
             window.scrollTo(0, 0);
+        }
+
+        // ── Gin Rummy sheet (GinHands / GinGames tabs) ───────────────────
+        const GIN_SHEET_RESULTS = { knock: 'knock', undercut: 'undercut', gin: 'gin', bigGin: 'big gin' };
+
+        async function postGinToSheet(payload) {
+            if (!WEB_APP_URL || WEB_APP_URL.includes("YOUR_GOOGLE_APPS_SCRIPT_WEB_APP")) return;
+            try {
+                await fetch(WEB_APP_URL, { method: "POST", mode: "no-cors", body: JSON.stringify(payload) });
+            } catch (error) {
+                console.error("Gin cloud sync error:", error);
+            }
+        }
+
+        function shipGinHand(hand) {
+            postGinToSheet({
+                action: "addGinHand",
+                Game_ID: ginGame.gameId,
+                Hand_Number: hand.handNumber,
+                Timestamp: hand.timestamp,
+                Knocker_ID: ginGame.playerIds[hand.knockerIdx],
+                Result: GIN_SHEET_RESULTS[hand.result],
+                Knocker_Deadwood: hand.knockerDeadwood,
+                Defender_Deadwood: hand.defenderDeadwood,
+                Points: hand.points,
+                Winner_ID: ginGame.playerIds[hand.winnerIdx]
+            });
+        }
+
+        function deleteGinHandFromCloud(handNumber) {
+            postGinToSheet({ action: "deleteGinHand", Game_ID: ginGame.gameId, Hand_Number: handNumber, Before: new Date().toISOString() });
+        }
+
+        function recordGinGameEnd(reason, players, winnerIdx) {
+            postGinToSheet({
+                action: "endGinGame",
+                Game_ID: ginGame.gameId,
+                Ended_At: new Date().toISOString(),
+                Reason: reason === 'target' ? `Reached ${ginGame.targetScore}` : "Ended early",
+                Game_Name: ginGame.gameName,
+                Player_1: ginGame.playerIds[0],
+                Player_2: ginGame.playerIds[1],
+                Winner_ID: winnerIdx === null ? "" : ginGame.playerIds[winnerIdx],
+                Player_1_Score: players[0].total,
+                Player_2_Score: players[1].total,
+                Hands_Played: ginGame.hands.length,
+                Target_Score: ginGame.targetScore,
+                Settings: ginGame.settings
+            });
+        }
+
+        async function fetchGinStats() {
+            const loadingEl = document.getElementById('gin-stats-loading');
+            const contentEl = document.getElementById('gin-stats-content');
+            const errorEl = document.getElementById('gin-stats-error');
+            loadingEl.classList.remove('hidden');
+            contentEl.classList.add('hidden');
+            errorEl.classList.add('hidden');
+
+            const showError = (message) => {
+                loadingEl.classList.add('hidden');
+                errorEl.textContent = message;
+                errorEl.classList.remove('hidden');
+            };
+            if (!WEB_APP_URL || WEB_APP_URL.includes("YOUR_GOOGLE_APPS_SCRIPT_WEB_APP")) {
+                showError("Stats aren't available offline. Connect the cloud database first.");
+                return;
+            }
+
+            try {
+                const response = await fetch(`${WEB_APP_URL}?action=getGinHistory`);
+                const result = await response.json();
+                if (result.status !== "success") throw new Error("Bad response");
+                if (!Array.isArray(result.ginGames)) {
+                    // Deployed Apps Script predates Gin (unknown actions fall back to the player list)
+                    showError("Gin Rummy history needs the updated Apps Script. Paste apps-script/Code.gs into the sheet's Apps Script and deploy a new version.");
+                    return;
+                }
+                renderGinStats(result);
+                loadingEl.classList.add('hidden');
+                contentEl.classList.remove('hidden');
+            } catch (error) {
+                console.error("Failed to load Gin stats", error);
+                showError("Failed to load stats. Check your connection and Apps Script deployment.");
+            }
+        }
+
+        // Finished games, newest first
+        function renderGinStats(result) {
+            const names = {};
+            result.players.forEach((p) => { names[p.id] = p.name; });
+            const nameOf = (id) => escapeHtml(names[id] || id);
+            const games = result.ginGames.slice().sort((a, b) => new Date(b.Ended_At) - new Date(a.Ended_At));
+
+            document.getElementById('gin-stats-count').textContent =
+                `${games.length} finished ${games.length === 1 ? 'game' : 'games'} · ${result.ginHands.length} ${result.ginHands.length === 1 ? 'hand' : 'hands'} played`;
+            const box = document.getElementById('gin-stats-games');
+            if (games.length === 0) {
+                box.innerHTML = '<div class="text-slate-500 text-xs italic text-center py-2">No Gin Rummy games finished yet.</div>';
+                return;
+            }
+            box.innerHTML = games.map((g) => {
+                const ended = new Date(g.Ended_At);
+                const when = isNaN(ended) ? '' : ended.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+                const side = (id, score) => `<span class="${id === g.Winner_ID ? 'font-bold text-[var(--accent)]' : 'text-slate-200'}">${nameOf(id)} ${score}</span>`;
+                const label = [when, g.Game_Name ? escapeHtml(g.Game_Name) : '', escapeHtml(g.Reason)].filter(Boolean).join(' · ');
+                return `
+                    <div class="py-2 border-b border-slate-800 last:border-b-0">
+                        <div class="text-xs text-slate-500">${label}</div>
+                        <div class="truncate">${side(g.Player_1, g.Player_1_Score)} <span class="text-slate-500">vs</span> ${side(g.Player_2, g.Player_2_Score)}</div>
+                    </div>`;
+            }).join('');
         }
 
         function confirmAbandonGinGame() {
@@ -2482,6 +2601,7 @@ async function checkNewPlayer(selectElement, seatIndex) {
             document.getElementById('setup-view').classList.add('hidden');
             if (getCurrentGame() === 'gin') {
                 document.getElementById('gin-stats-view').classList.remove('hidden');
+                await fetchGinStats();
                 return;
             }
             document.getElementById('stats-view').classList.remove('hidden');
