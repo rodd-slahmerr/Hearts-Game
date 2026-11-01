@@ -463,6 +463,9 @@
             <button onclick="startGinGame()" class="w-full bg-[var(--accent)] hover:opacity-90 text-[var(--on-accent)] font-extrabold py-5 px-6 rounded-3xl shadow-lg active:scale-[0.98] transition-all text-center text-xl tracking-wide">
                 Begin Game
             </button>
+            <div class="text-center">
+                <button type="button" onclick="openGinRulesView()" class="text-sm font-bold text-[var(--accent)] hover:opacity-70 underline underline-offset-2 transition-opacity">How to play</button>
+            </div>
         </div>
 
         <div id="hearts-setup" class="space-y-6">
@@ -524,6 +527,7 @@
         <div class="bg-slate-800/80 rounded-3xl p-5 border border-slate-700/50 shadow-xl space-y-4">
             <div class="flex items-center justify-between border-b border-slate-700/50 pb-3">
                 <h3 class="text-sm font-bold text-slate-200">Record Hand <span id="gin-hand-num" class="text-rose-400">1</span></h3>
+                <button type="button" onclick="openGinRulesView()" class="text-xs font-bold text-[var(--accent)] hover:opacity-70 underline underline-offset-2 transition-opacity">Rules</button>
             </div>
 
             <div class="space-y-2">
@@ -808,6 +812,90 @@
                 </div>
             </div>
         </div>
+    </div>
+
+    <!-- GIN RUMMY RULES VIEW (summarized from the Wikipedia "Gin rummy" article) -->
+    <div id="gin-rules-view" class="hidden max-w-md mx-auto px-4 pt-8 pb-16 space-y-6">
+        <div class="flex items-center space-x-3">
+            <button onclick="closeGinRulesView()" class="text-slate-300 hover:text-white bg-slate-800/80 hover:bg-slate-800 border border-slate-700/50 px-3 py-2 rounded-xl transition-all active:scale-95">
+                &larr; Back
+            </button>
+            <h1 class="font-display text-2xl font-extrabold tracking-tight text-[var(--accent)]" style="letter-spacing: var(--word-tracking); text-transform: var(--word-case);">Gin Rummy Rules</h1>
+        </div>
+
+        <p class="text-sm text-slate-400">Get your cards into melds and your deadwood count down before your opponent does.</p>
+
+        <div class="bg-slate-800/80 backdrop-blur-md rounded-3xl p-6 border border-slate-700/50 shadow-xl space-y-3">
+            <label class="block text-sm font-bold text-slate-300 uppercase tracking-wider border-b border-slate-700/40 pb-3 mb-1">The Basics</label>
+            <ul class="space-y-2 text-sm text-slate-300 list-disc list-outside pl-4">
+                <li>Two players, one standard 52-card deck</li>
+                <li>Cards rank King (high) down to Ace (low)</li>
+                <li>Card values: Aces are 1, face cards are 10, everything else is its number</li>
+            </ul>
+        </div>
+        <div class="bg-slate-800/80 backdrop-blur-md rounded-3xl p-6 border border-slate-700/50 shadow-xl space-y-3">
+            <label class="block text-sm font-bold text-slate-300 uppercase tracking-wider border-b border-slate-700/40 pb-3 mb-1">The Deal</label>
+            <ul class="space-y-2 text-sm text-slate-300 list-disc list-outside pl-4">
+                <li>Pick the first dealer any way you like; the deal then alternates every hand</li>
+                <li>The dealer gives each player 10 cards, one at a time, starting with the opponent</li>
+                <li>The next card goes face up to start the discard pile; the rest are the face-down stock</li>
+                <li>First turn: the non-dealer may take the face-up card or pass. If they pass, the dealer may take it or pass. If both pass, the non-dealer draws from the stock</li>
+            </ul>
+        </div>
+        <div class="bg-slate-800/80 backdrop-blur-md rounded-3xl p-6 border border-slate-700/50 shadow-xl space-y-3">
+            <label class="block text-sm font-bold text-slate-300 uppercase tracking-wider border-b border-slate-700/40 pb-3 mb-1">Melds</label>
+            <ul class="space-y-2 text-sm text-slate-300 list-disc list-outside pl-4">
+                <li>Set: 3 or 4 cards of the same rank, like 7-7-7</li>
+                <li>Run: 3 or more cards in a row in the same suit, like 4-5-6 of hearts</li>
+                <li>Aces are low only: A-2-3 is a run, Q-K-A is not</li>
+                <li>A card can only count in one meld at a time</li>
+                <li>Deadwood is every card not in a meld; its count is the total of those cards’ values</li>
+            </ul>
+        </div>
+        <div class="bg-slate-800/80 backdrop-blur-md rounded-3xl p-6 border border-slate-700/50 shadow-xl space-y-3">
+            <label class="block text-sm font-bold text-slate-300 uppercase tracking-wider border-b border-slate-700/40 pb-3 mb-1">Your Turn</label>
+            <ul class="space-y-2 text-sm text-slate-300 list-disc list-outside pl-4">
+                <li>Draw the top card of the stock or the top card of the discard pile</li>
+                <li>Then discard one card face up</li>
+                <li>If you took the top discard, you can’t throw that same card back this turn</li>
+            </ul>
+        </div>
+        <div class="bg-slate-800/80 backdrop-blur-md rounded-3xl p-6 border border-slate-700/50 shadow-xl space-y-3">
+            <label class="block text-sm font-bold text-slate-300 uppercase tracking-wider border-b border-slate-700/40 pb-3 mb-1">Knocking</label>
+            <ul class="space-y-2 text-sm text-slate-300 list-disc list-outside pl-4">
+                <li>Once your deadwood count is 10 or less, you may knock to end the hand: discard face down (or just say so)</li>
+                <li>Both players lay out their melds and deadwood</li>
+                <li>The other player may then lay off deadwood by adding it to the knocker’s melds; the knocker can’t lay off onto theirs</li>
+                <li>If the stock gets down to its last two cards with no knock, the hand is a draw and nobody scores</li>
+            </ul>
+        </div>
+        <div class="bg-slate-800/80 backdrop-blur-md rounded-3xl p-6 border border-slate-700/50 shadow-xl space-y-3">
+            <label class="block text-sm font-bold text-slate-300 uppercase tracking-wider border-b border-slate-700/40 pb-3 mb-1">Gin and Big Gin</label>
+            <ul class="space-y-2 text-sm text-slate-300 list-disc list-outside pl-4">
+                <li>Going gin: knocking with no deadwood at all. The other player can’t lay off</li>
+                <li>Big gin: instead of going gin, keep playing until the card you pick up melds too, so all 11 cards are in melds. Again, no laying off</li>
+            </ul>
+        </div>
+        <div class="bg-slate-800/80 backdrop-blur-md rounded-3xl p-6 border border-slate-700/50 shadow-xl space-y-3">
+            <label class="block text-sm font-bold text-slate-300 uppercase tracking-wider border-b border-slate-700/40 pb-3 mb-1">Scoring a Hand</label>
+            <ul class="space-y-2 text-sm text-slate-300 list-disc list-outside pl-4">
+                <li>Knock: if the knocker’s deadwood is lower, the knocker scores the difference</li>
+                <li>Undercut: if the other player’s deadwood is equal or lower (after laying off), they score the difference plus a 25-point bonus</li>
+                <li>Gin: 25 points plus the other player’s full deadwood count</li>
+                <li>Big gin: 31 points plus the other player’s full deadwood count</li>
+            </ul>
+        </div>
+        <div class="bg-slate-800/80 backdrop-blur-md rounded-3xl p-6 border border-slate-700/50 shadow-xl space-y-3">
+            <label class="block text-sm font-bold text-slate-300 uppercase tracking-wider border-b border-slate-700/40 pb-3 mb-1">Winning the Game</label>
+            <ul class="space-y-2 text-sm text-slate-300 list-disc list-outside pl-4">
+                <li>Keep a running total; the first player to reach 100 (or whatever you agreed) ends the game</li>
+                <li>Game bonus: the winner gets 100 extra points</li>
+                <li>Box bonus (some variations): each player adds 25 points for every hand they won</li>
+                <li>Shutout: if the winner won every hand, their hand points are doubled before the box bonus is added</li>
+            </ul>
+        </div>
+
+        <p class="text-xs text-slate-500 text-center">Summarized from the Wikipedia article <a href="https://en.wikipedia.org/wiki/Gin_rummy" target="_blank" rel="noopener" class="underline underline-offset-2 text-[var(--accent)]">Gin rummy</a> (as edited September 14, 2026).</p>
     </div>
 
     <!-- CANCELLATION RULES EXPLAINER VIEW -->
@@ -2928,6 +3016,25 @@ async function checkNewPlayer(selectElement, seatIndex) {
         function closeRulesView() {
             document.getElementById('rules-view').classList.add('hidden');
             document.getElementById('setup-view').classList.remove('hidden');
+        }
+
+        // ── Gin Rummy rules screen; opens from setup or mid-game and returns there ──
+        let ginRulesReturnTo = 'setup-view';
+        let ginRulesScroll = 0;
+
+        function openGinRulesView() {
+            const inGame = !document.getElementById('gin-game-view').classList.contains('hidden');
+            ginRulesReturnTo = inGame ? 'gin-game-view' : 'setup-view';
+            ginRulesScroll = window.scrollY;
+            document.getElementById(ginRulesReturnTo).classList.add('hidden');
+            document.getElementById('gin-rules-view').classList.remove('hidden');
+            window.scrollTo(0, 0);
+        }
+
+        function closeGinRulesView() {
+            document.getElementById('gin-rules-view').classList.add('hidden');
+            document.getElementById(ginRulesReturnTo).classList.remove('hidden');
+            window.scrollTo(0, ginRulesScroll);
         }
 
         async function fetchStats() {
