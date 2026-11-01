@@ -155,6 +155,40 @@
             --on-accent:#F8ECEA; --on-accent2:#F8ECEA; --on-success:#F8ECEA;
         }
 
+        /* Gin seasonal themes flip the same way: Thanksgiving and Christmas go dark, New Year's goes light */
+        [data-game="gin"][data-theme="thanksgiving"] {
+            --bg:#2A1C12; --surface:#36251A; --surface-2:#402C1F; --surface-hover:#4A3324;
+            --ink:#F6EAD6; --muted:#CDB894; --border:#5A4230;
+            --accent:#E8944A; --accent-soft:rgba(232,148,74,0.14); --accent-soft-2:rgba(232,148,74,0.30);
+            --accent2:#DDB04A; --accent2-soft:rgba(221,176,74,0.14); --accent2-soft-2:rgba(221,176,74,0.30);
+            --success:#B4C46A; --success-soft:rgba(180,196,106,0.14); --success-soft-2:rgba(180,196,106,0.30);
+            --bronze:#C46A3E; --silver-soft:rgba(205,184,148,0.18);
+            --on-accent:#2A1C12; --on-accent2:#2A1C12; --on-success:#2A1C12;
+            --moon:#F6EAD6; --moon-glow:rgba(232,148,74,0.5);
+        }
+
+        [data-game="gin"][data-theme="christmas"] {
+            --bg:#10291D; --surface:#173523; --surface-2:#1D3F2B; --surface-hover:#244A33;
+            --ink:#F7EFE2; --muted:#C4D3C4; --border:#2F5A40;
+            --accent:#E8BE5A; --accent-soft:rgba(232,190,90,0.14); --accent-soft-2:rgba(232,190,90,0.30);
+            --accent2:#F07A8A; --accent2-soft:rgba(240,122,138,0.14); --accent2-soft-2:rgba(240,122,138,0.30);
+            --success:#9AD6A6; --success-soft:rgba(154,214,166,0.14); --success-soft-2:rgba(154,214,166,0.30);
+            --bronze:#D08A4A; --silver-soft:rgba(196,211,196,0.18);
+            --on-accent:#10291D; --on-accent2:#10291D; --on-success:#10291D;
+            --moon:#F7EFE2; --moon-glow:rgba(232,190,90,0.5);
+        }
+
+        [data-game="gin"][data-theme="newyear"] {
+            --bg:#F5EEDB; --surface:#FCF8EE; --surface-2:#EDE3C8; --surface-hover:#E4D7B5;
+            --ink:#17140C; --muted:#5E5233; --border:#D9CBA3;
+            --accent:#1A1610; --accent-soft:rgba(26,22,16,0.08); --accent-soft-2:rgba(26,22,16,0.20);
+            --accent2:#7A6010; --accent2-soft:rgba(122,96,16,0.12); --accent2-soft-2:rgba(122,96,16,0.26);
+            --success:#6E5A10; --success-soft:rgba(110,90,16,0.12); --success-soft-2:rgba(110,90,16,0.26);
+            --bronze:#8C7A4A; --silver-soft:rgba(94,82,51,0.14);
+            --on-accent:#E8C964; --on-accent2:#FCF8EE; --on-success:#FCF8EE;
+            --moon:#FCF8EE; --moon-glow:rgba(212,175,55,0.5);
+        }
+
         /* Native dropdown list stays readable in every theme */
         #game-select option { background: var(--surface); color: var(--ink); }
         /* Shrink the dropdown to the chosen game's name so the arrow sits next to it */
@@ -1003,9 +1037,9 @@
             light: { label: 'Light', swatch: '#2F5233', bg: '#FBF9F3', ginBg: '#D7E8D2' },
             dark: { label: 'Dark', swatch: '#C98A2B', bg: '#17130F', ginBg: '#F3E9D6' },
             ranch: { label: 'Ranch', swatch: '#8C1D18', bg: '#141110', ginBg: '#F6E4E1', icon: BARN_ICON },
-            thanksgiving: { label: 'Thanksgiving', swatch: '#7E2233', bg: '#F6EDDC', icon: TURKEY_ICON },
-            christmas: { label: 'Christmas', swatch: '#B3162E', bg: '#FBF3E8', icon: CANDY_CANE_ICON },
-            newyear: { label: "New Year's", swatch: '#D4AF37', bg: '#0A0A0A', icon: CHAMPAGNE_ICON }
+            thanksgiving: { label: 'Thanksgiving', swatch: '#7E2233', bg: '#F6EDDC', ginBg: '#2A1C12', icon: TURKEY_ICON },
+            christmas: { label: 'Christmas', swatch: '#B3162E', bg: '#FBF3E8', ginBg: '#10291D', icon: CANDY_CANE_ICON },
+            newyear: { label: "New Year's", swatch: '#D4AF37', bg: '#0A0A0A', ginBg: '#F5EEDB', icon: CHAMPAGNE_ICON }
         };
 
         function applyTheme(name) {
