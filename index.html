@@ -468,7 +468,7 @@
         </div>
     </div>
 
-    <!-- GIN RUMMY ACTIVE GAME VIEW (hand entry and scoring come next) -->
+    <!-- GIN RUMMY ACTIVE GAME VIEW -->
     <div id="gin-game-view" class="hidden max-w-md mx-auto px-4 pt-4 space-y-4">
         <div class="flex items-center justify-between bg-slate-800/40 p-3 rounded-2xl border border-slate-700/30">
             <div class="flex items-center space-x-2 min-w-0">
@@ -483,8 +483,54 @@
             <div id="gin-scoreboard" class="grid grid-cols-2 gap-2"></div>
         </div>
 
-        <div class="bg-slate-800/80 rounded-3xl p-6 border border-slate-700/50 shadow-xl text-center text-slate-400 text-sm">
-            Hand entry is coming next.
+        <!-- HAND ENTRY -->
+        <div class="bg-slate-800/80 rounded-3xl p-5 border border-slate-700/50 shadow-xl space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-700/50 pb-3">
+                <h3 class="text-sm font-bold text-slate-200">Record Hand <span id="gin-hand-num" class="text-rose-400">1</span></h3>
+            </div>
+
+            <div class="space-y-2">
+                <div class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Who knocked or went gin?</div>
+                <div id="gin-knocker-buttons" class="grid grid-cols-2 gap-2"></div>
+            </div>
+
+            <div class="space-y-2">
+                <div class="text-xs font-semibold text-slate-400 uppercase tracking-wider">How did it end?</div>
+                <div class="grid grid-cols-3 gap-2">
+                    <button type="button" data-gin-result="knock" onclick="setGinResult('knock')">Knock</button>
+                    <button type="button" data-gin-result="gin" onclick="setGinResult('gin')">Gin</button>
+                    <button type="button" data-gin-result="bigGin" onclick="setGinResult('bigGin')">Big gin</button>
+                </div>
+            </div>
+
+            <div id="gin-deadwood-fields" class="hidden space-y-3">
+                <label id="gin-kd-row" class="flex items-center justify-between gap-3">
+                    <span id="gin-kd-label" class="text-sm text-slate-300 min-w-0"></span>
+                    <input type="number" id="gin-kd" min="0" max="10" step="1" inputmode="numeric" oninput="updateGinEntry()" class="w-24 bg-slate-900 border-2 border-slate-700/60 rounded-xl px-3 py-3 text-right text-lg font-bold text-slate-100 focus:outline-none focus:border-rose-500 transition-colors">
+                </label>
+                <label class="flex items-center justify-between gap-3">
+                    <span id="gin-dd-label" class="text-sm text-slate-300 min-w-0"></span>
+                    <input type="number" id="gin-dd" min="0" step="1" inputmode="numeric" oninput="updateGinEntry()" class="w-24 bg-slate-900 border-2 border-slate-700/60 rounded-xl px-3 py-3 text-right text-lg font-bold text-slate-100 focus:outline-none focus:border-rose-500 transition-colors">
+                </label>
+            </div>
+
+            <div class="flex flex-col items-center pt-3 border-t border-slate-700/30">
+                <div id="gin-hand-preview" class="px-4 py-2 rounded-xl text-sm font-bold mb-3 text-center"></div>
+                <button id="gin-save-hand" onclick="saveGinHand()" disabled class="w-full py-4 rounded-2xl font-extrabold shadow-lg transition-all duration-200">
+                    Save Hand
+                </button>
+            </div>
+        </div>
+
+        <!-- HAND HISTORY -->
+        <div class="bg-slate-800/80 rounded-3xl p-4 border border-slate-700/50 shadow-xl">
+            <div class="flex items-center justify-between mb-2">
+                <h4 class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Hands</h4>
+                <button id="gin-undo" onclick="undoGinHand()" disabled class="text-xs font-bold text-slate-500 hover:text-rose-400 disabled:opacity-30 disabled:pointer-events-none transition-colors">
+                    Undo Last Hand
+                </button>
+            </div>
+            <div id="gin-history" class="bg-slate-900/60 rounded-2xl p-3 border border-slate-800 text-sm max-h-60 overflow-y-auto"></div>
         </div>
     </div>
 
@@ -1124,12 +1170,192 @@
             badge.classList.toggle('hidden', !ginGame.gameName);
             document.getElementById('gin-target-display').textContent = `Playing to ${ginGame.targetScore}`;
 
+            document.getElementById('gin-knocker-buttons').innerHTML = ginGame.playerIds.map((id, i) => `
+                <button type="button" data-gin-knocker="${i}" onclick="setGinKnocker(${i})">${escapeHtml(getPlayerDisplayName(id))}</button>`).join('');
+            resetGinEntry();
+            renderGinScoreboard();
+            renderGinHistory();
+            window.scrollTo(0, 0);
+        }
+
+        function renderGinScoreboard() {
             document.getElementById('gin-scoreboard').innerHTML = ginGame.playerIds.map((id, i) => `
                 <div class="bg-slate-900/60 rounded-2xl p-3 border border-slate-700/50 text-center min-w-0">
                     <div class="text-sm font-bold text-slate-200 truncate">${escapeHtml(getPlayerDisplayName(id))}</div>
                     <div class="font-display text-3xl font-extrabold text-[var(--accent)]">${ginGame.totals[i]}</div>
                 </div>`).join('');
-            window.scrollTo(0, 0);
+        }
+
+        // ── Gin Rummy hand entry ─────────────────────────────────────────
+        let ginEntry = { knocker: null, result: null };
+
+        const GIN_CHOICE_ON = "w-full min-w-0 truncate px-3 py-3 rounded-xl border-2 border-[var(--accent)] bg-[var(--accent)] text-[var(--on-accent)] font-bold transition-colors";
+        const GIN_CHOICE_OFF = "w-full min-w-0 truncate px-3 py-3 rounded-xl border-2 border-slate-700/50 bg-slate-900 text-slate-200 font-bold hover:bg-slate-700/50 transition-colors";
+
+        // Scores one hand. Knock: the knocker scores the deadwood difference, unless the
+        // defender's deadwood is equal or lower (undercut), when the defender scores the
+        // difference plus the undercut bonus. Gin / big gin: the knocker scores the
+        // defender's deadwood plus that bonus.
+        function scoreGinHand(settings, result, knockerDeadwood, defenderDeadwood) {
+            if (result === 'gin') {
+                return { outcome: 'gin', winner: 'knocker', points: defenderDeadwood + settings.ginBonus };
+            }
+            if (result === 'bigGin') {
+                return { outcome: 'bigGin', winner: 'knocker', points: defenderDeadwood + settings.bigGinBonus };
+            }
+            if (knockerDeadwood < defenderDeadwood) {
+                return { outcome: 'knock', winner: 'knocker', points: defenderDeadwood - knockerDeadwood };
+            }
+            return { outcome: 'undercut', winner: 'defender', points: knockerDeadwood - defenderDeadwood + settings.undercutBonus };
+        }
+
+        function setGinKnocker(index) {
+            ginEntry.knocker = index;
+            updateGinEntry();
+        }
+
+        function setGinResult(result) {
+            ginEntry.result = result;
+            updateGinEntry();
+        }
+
+        function resetGinEntry() {
+            ginEntry = { knocker: null, result: null };
+            document.getElementById('gin-kd').value = '';
+            document.getElementById('gin-dd').value = '';
+            document.getElementById('gin-hand-num').textContent = ginGame.hands.length + 1;
+            updateGinEntry();
+        }
+
+        // Whole number 0 or more from a deadwood box; '' while empty, null if invalid
+        function readDeadwood(id) {
+            const raw = document.getElementById(id).value.trim();
+            if (raw === '') return '';
+            return /^\d+$/.test(raw) ? parseInt(raw, 10) : null;
+        }
+
+        // The hand as entered, scored; or { message } saying what's still needed
+        function readGinEntry() {
+            const { knocker, result } = ginEntry;
+            if (knocker === null) return { message: 'Pick who knocked or went gin' };
+            if (result === null) return { message: 'Pick how the hand ended' };
+
+            const knockerDeadwood = result === 'knock' ? readDeadwood('gin-kd') : 0;
+            const defenderDeadwood = readDeadwood('gin-dd');
+            if (knockerDeadwood === '' || defenderDeadwood === '') return { message: 'Enter the deadwood' };
+            if (knockerDeadwood === null || defenderDeadwood === null) return { message: 'Deadwood must be a whole number, 0 or more' };
+            if (result === 'knock' && knockerDeadwood > 10) return { message: 'A knock needs 10 or less deadwood' };
+
+            const scored = scoreGinHand(ginGame.settings, result, knockerDeadwood, defenderDeadwood);
+            const winnerIdx = scored.winner === 'knocker' ? knocker : 1 - knocker;
+            return { knocker, result, knockerDeadwood, defenderDeadwood, outcome: scored.outcome, points: scored.points, winnerIdx };
+        }
+
+        function ginOutcomeLabel(outcome) {
+            return { knock: 'Knock', undercut: 'Undercut', gin: 'Gin', bigGin: 'Big gin' }[outcome];
+        }
+
+        function updateGinEntry() {
+            const { knocker, result } = ginEntry;
+            document.querySelectorAll('[data-gin-knocker]').forEach((btn) => {
+                btn.className = Number(btn.dataset.ginKnocker) === knocker ? GIN_CHOICE_ON : GIN_CHOICE_OFF;
+            });
+            document.querySelectorAll('[data-gin-result]').forEach((btn) => {
+                btn.className = btn.dataset.ginResult === result ? GIN_CHOICE_ON : GIN_CHOICE_OFF;
+            });
+
+            const fields = document.getElementById('gin-deadwood-fields');
+            fields.classList.toggle('hidden', knocker === null || result === null);
+            if (knocker !== null && result !== null) {
+                const knockerName = getPlayerDisplayName(ginGame.playerIds[knocker]);
+                const defenderName = getPlayerDisplayName(ginGame.playerIds[1 - knocker]);
+                document.getElementById('gin-kd-row').classList.toggle('hidden', result !== 'knock');
+                document.getElementById('gin-kd-label').textContent = `${knockerName}'s deadwood`;
+                document.getElementById('gin-dd-label').textContent = result === 'knock'
+                    ? `${defenderName}'s deadwood (after layoffs)`
+                    : `${defenderName}'s deadwood`;
+            }
+
+            const entry = readGinEntry();
+            const preview = document.getElementById('gin-hand-preview');
+            const save = document.getElementById('gin-save-hand');
+            if (entry.message) {
+                preview.textContent = entry.message;
+                preview.className = "px-4 py-2 rounded-xl text-sm font-bold mb-3 text-center bg-amber-500/10 text-amber-400 border border-amber-500/20";
+                save.disabled = true;
+                save.className = "w-full py-4 rounded-2xl bg-slate-700 text-slate-400 font-extrabold shadow-lg cursor-not-allowed transition-all duration-200";
+            } else {
+                const winnerName = getPlayerDisplayName(ginGame.playerIds[entry.winnerIdx]);
+                preview.textContent = `${ginOutcomeLabel(entry.outcome)}: ${winnerName} scores ${entry.points}`;
+                preview.className = "px-4 py-2 rounded-xl text-sm font-bold mb-3 text-center bg-emerald-500/10 text-emerald-400 border border-emerald-500/30";
+                save.disabled = false;
+                save.className = "w-full py-4 rounded-2xl bg-[var(--accent)] text-[var(--on-accent)] font-extrabold shadow-lg hover:opacity-90 active:scale-[0.98] transition-all duration-200";
+            }
+        }
+
+        function recomputeGinTotals() {
+            ginGame.totals = [0, 0];
+            ginGame.hands.forEach((hand) => { ginGame.totals[hand.winnerIdx] += hand.points; });
+        }
+
+        function saveGinHand() {
+            const entry = readGinEntry();
+            if (entry.message) return;
+
+            const hand = {
+                handNumber: ginGame.hands.length + 1,
+                timestamp: new Date().toISOString(),
+                knockerIdx: entry.knocker,
+                result: entry.outcome,
+                knockerDeadwood: entry.knockerDeadwood,
+                defenderDeadwood: entry.defenderDeadwood,
+                points: entry.points,
+                winnerIdx: entry.winnerIdx
+            };
+            ginGame.hands.push(hand);
+            recomputeGinTotals();
+            saveGinGameState();
+
+            renderGinScoreboard();
+            renderGinHistory();
+            resetGinEntry();
+            showToast(`Hand ${hand.handNumber}: ${getPlayerDisplayName(ginGame.playerIds[hand.winnerIdx])} scores ${hand.points}`);
+        }
+
+        function undoGinHand() {
+            const hand = ginGame.hands.pop();
+            if (!hand) return;
+            recomputeGinTotals();
+            saveGinGameState();
+            renderGinScoreboard();
+            renderGinHistory();
+            resetGinEntry();
+            showToast(`Removed hand ${hand.handNumber}`);
+        }
+
+        function renderGinHistory() {
+            const box = document.getElementById('gin-history');
+            document.getElementById('gin-undo').disabled = ginGame.hands.length === 0;
+            if (ginGame.hands.length === 0) {
+                box.innerHTML = '<div class="text-slate-500 text-xs italic text-center py-2">No hands yet.</div>';
+                return;
+            }
+            const verbs = { knock: 'knocked', undercut: 'knocked, undercut', gin: 'went gin', bigGin: 'went big gin' };
+            box.innerHTML = ginGame.hands.slice().reverse().map((hand) => {
+                const knockerName = escapeHtml(getPlayerDisplayName(ginGame.playerIds[hand.knockerIdx]));
+                const winnerName = escapeHtml(getPlayerDisplayName(ginGame.playerIds[hand.winnerIdx]));
+                return `
+                    <div class="flex items-center justify-between gap-3 py-2 border-b border-slate-800 last:border-b-0">
+                        <div class="min-w-0">
+                            <div class="text-xs text-slate-500">Hand ${hand.handNumber}</div>
+                            <div class="text-slate-200 truncate">${knockerName} ${verbs[hand.result]}</div>
+                        </div>
+                        <div class="text-right whitespace-nowrap">
+                            <div class="font-bold text-[var(--accent)]">+${hand.points}</div>
+                            <div class="text-xs text-slate-400">${winnerName}</div>
+                        </div>
+                    </div>`;
+            }).join('');
         }
 
         function confirmAbandonGinGame() {
