@@ -17,6 +17,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=UnifrakturMaguntia&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Limelight&display=swap" rel="stylesheet">
     <style>
         :root, [data-theme="light"] {
             --bg:#FBF9F3; --surface:#FFFFFF; --surface-2:#F1EFE4; --surface-hover:#E9E5D6;
@@ -103,6 +104,25 @@
             font-weight: 400;
             font-size-adjust: 0.56; /* blackletter has short lowercase; match the other themes' size */
         }
+
+        /* Seasonal: Dec 27 through Jan 6 (see isThemeInSeason) */
+        [data-theme="newyear"] {
+            --bg:#0A0A0A; --surface:#141414; --surface-2:#1C1C1C; --surface-hover:#262626;
+            --ink:#F4EEDD; --muted:#CFC6AE; --border:#3A3220;
+            --accent:#D4AF37; --accent-soft:rgba(212,175,55,0.14); --accent-soft-2:rgba(212,175,55,0.30);
+            --accent2:#E8C964; --accent2-soft:rgba(232,201,100,0.14); --accent2-soft-2:rgba(232,201,100,0.30);
+            --success:#D4AF37; --success-soft:rgba(212,175,55,0.14); --success-soft-2:rgba(212,175,55,0.30);
+            --bronze:#8C7A4A; --silver-soft:rgba(207,198,174,0.18);
+            --on-accent:#0A0A0A; --on-accent2:#0A0A0A; --on-success:#0A0A0A;
+            --font-display:Limelight,Georgia,serif;
+            --font-body:'Segoe UI','Seravek','Helvetica Neue',Arial,sans-serif;
+            --radius-lg:8px; --radius-md:6px; --radius-sm:4px;
+            --word-tracking:0.06em; --word-case:uppercase;
+            --moon:#F4EEDD; --moon-glow:rgba(212,175,55,0.5);
+        }
+
+        /* Limelight has a single weight; don't let the browser fake a bold */
+        [data-theme="newyear"] .font-display { font-weight: 400; }
 
         body {
             background: var(--bg);
@@ -262,6 +282,10 @@
                 return (now.getMonth() === 10 && now.getDate() > thanksgivingDay(now.getFullYear()))
                     || (now.getMonth() === 11 && now.getDate() <= 26);
             }
+            if (name === 'newyear') {
+                return (now.getMonth() === 11 && now.getDate() >= 27)
+                    || (now.getMonth() === 0 && now.getDate() <= 6);
+            }
             return true;
         }
 
@@ -269,7 +293,7 @@
         (function () {
             try {
                 var saved = localStorage.getItem('hearts_theme_v1');
-                if ((saved === 'dark' || saved === 'ranch' || saved === 'thanksgiving' || saved === 'christmas') && isThemeInSeason(saved)) {
+                if ((saved === 'dark' || saved === 'ranch' || saved === 'thanksgiving' || saved === 'christmas' || saved === 'newyear') && isThemeInSeason(saved)) {
                     document.documentElement.setAttribute('data-theme', saved);
                 }
             } catch (err) { /* localStorage unavailable, fall back to default light */ }
@@ -700,13 +724,20 @@
             <path d="M38 58 L38 22 C38 8 20 8 20 22" stroke="#7A0F1F" stroke-width="1.2" fill="none" stroke-linecap="round" opacity="0.25"/>
         </svg>`;
 
+        const CHAMPAGNE_ICON = `<svg viewBox="0 0 64 64" width="32" height="32" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <g transform="rotate(-16 22 34)"><path d="M10 14 L34 14 Q34 30 22 32 Q10 30 10 14 Z" fill="#D4AF37"/><rect x="21" y="32" width="2" height="18" fill="#D4AF37"/><rect x="15" y="50" width="14" height="2.5" rx="1" fill="#D4AF37"/></g>
+            <g transform="rotate(16 42 34)"><path d="M30 14 L54 14 Q54 30 42 32 Q30 30 30 14 Z" fill="#E8C964"/><rect x="41" y="32" width="2" height="18" fill="#E8C964"/><rect x="35" y="50" width="14" height="2.5" rx="1" fill="#E8C964"/></g>
+            <path d="M32 4 L33 8 M26 6 L28.5 9.5 M38 6 L35.5 9.5" stroke="#8C7A4A" stroke-width="1.8" stroke-linecap="round"/>
+        </svg>`;
+
         // `icon` themes show only their picture in the picker, no label
         const THEME_META = {
             light: { label: 'Light', swatch: '#2F5233', bg: '#FBF9F3' },
             dark: { label: 'Dark', swatch: '#C98A2B', bg: '#17130F' },
             ranch: { label: 'Ranch', swatch: '#8C1D18', bg: '#141110', icon: BARN_ICON },
             thanksgiving: { label: 'Thanksgiving', swatch: '#7E2233', bg: '#F6EDDC', icon: TURKEY_ICON },
-            christmas: { label: 'Christmas', swatch: '#B3162E', bg: '#FBF3E8', icon: CANDY_CANE_ICON }
+            christmas: { label: 'Christmas', swatch: '#B3162E', bg: '#FBF3E8', icon: CANDY_CANE_ICON },
+            newyear: { label: "New Year's", swatch: '#D4AF37', bg: '#0A0A0A', icon: CHAMPAGNE_ICON }
         };
 
         function applyTheme(name) {
@@ -1271,11 +1302,89 @@ async function checkNewPlayer(selectElement, seatIndex) {
                 <g id="ci-mint"><circle cx="0" cy="0" r="7" fill="#FFFFFF"/><path d="M0 0 L0 -7 A7 7 0 0 1 6 -3.5 Z M0 0 L6 3.5 A7 7 0 0 1 0 7 Z M0 0 L-6 3.5 A7 7 0 0 1 -6 -3.5 Z" fill="#B3162E"/></g>
             </defs>`;
 
-        // Per-theme overlay art; `items` replace the stars with those symbols
+        // New Year's swaps the moon for a very round, happy Baby New Year with the
+        // coming year on his sash (drawn in a 300x300 box, scaled into 200x200)
+        function babyNewYearArt(year) {
+            return `
+            <defs>
+                <filter id="ny-baby-glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="18"/></filter>
+                <clipPath id="ny-baby-body"><ellipse cx="150" cy="188" rx="80" ry="72"/></clipPath>
+            </defs>
+            <g transform="scale(0.6667)">
+                <circle cx="150" cy="150" r="140" fill="#D4AF37" opacity="0.26" filter="url(#ny-baby-glow)"/>
+                <circle cx="150" cy="160" r="92" fill="#F3DE94" opacity="0.32" filter="url(#ny-baby-glow)"/>
+                <g>
+                <ellipse cx="118" cy="248" rx="24" ry="30" fill="#F5CBA7" transform="rotate(25 118 248)"/>
+                <ellipse cx="182" cy="248" rx="24" ry="30" fill="#F5CBA7" transform="rotate(-25 182 248)"/>
+                <ellipse cx="104" cy="272" rx="18" ry="11" fill="#F5CBA7"/>
+                <ellipse cx="196" cy="272" rx="18" ry="11" fill="#F5CBA7"/>
+                <ellipse cx="76" cy="168" rx="20" ry="36" fill="#F5CBA7" transform="rotate(35 76 168)"/>
+                <ellipse cx="224" cy="168" rx="20" ry="36" fill="#F5CBA7" transform="rotate(-35 224 168)"/>
+                <circle cx="60" cy="196" r="15" fill="#F5CBA7"/>
+                <path d="M236 190 L278 146 L286 158 Z" fill="#D4AF37"/>
+                <path d="M248 178 L256 186 M258 167 L266 175 M268 156 L275 163" stroke="#111" stroke-width="3"/>
+                <path d="M282 152 Q292 140 288 132 M284 156 Q298 152 300 144" stroke="#F4EEDD" stroke-width="2" fill="none" stroke-linecap="round"/>
+                <circle cx="240" cy="196" r="15" fill="#F5CBA7"/>
+                <ellipse cx="150" cy="188" rx="80" ry="72" fill="#F5CBA7"/>
+                <ellipse cx="134" cy="172" rx="46" ry="32" fill="#FBDDC2" opacity="0.7"/>
+                <path d="M146 204 Q150 208 154 204" stroke="#C98A6A" stroke-width="2" fill="none" stroke-linecap="round"/>
+                <g clip-path="url(#ny-baby-body)">
+                <rect x="20" y="166" width="260" height="30" fill="#FFFFFF" transform="rotate(-28 150 180)"/>
+                <rect x="20" y="166" width="260" height="3" fill="#D4AF37" transform="rotate(-28 150 180)"/>
+                <rect x="20" y="193" width="260" height="3" fill="#D4AF37" transform="rotate(-28 150 180)"/>
+                </g>
+                <text x="150" y="188" transform="rotate(-28 150 180)" text-anchor="middle" font-family="Georgia, serif" font-weight="700" font-size="20" letter-spacing="2" fill="#111111">${year}</text>
+                <path d="M80 222 Q150 240 220 222 L206 266 Q150 292 94 266 Z" fill="#FFFFFF" stroke="#E6DFD0" stroke-width="1.5"/>
+                <path d="M196 232 L212 228" stroke="#D4AF37" stroke-width="3" stroke-linecap="round"/>
+                <circle cx="97" cy="98" r="12" fill="#F5CBA7"/>
+                <circle cx="203" cy="98" r="12" fill="#F5CBA7"/>
+                <circle cx="97" cy="98" r="6" fill="#EDB28F"/>
+                <circle cx="203" cy="98" r="6" fill="#EDB28F"/>
+                <circle cx="150" cy="94" r="54" fill="#F5CBA7"/>
+                <path d="M150 50 C160 52 162 62 153 64 C146 65 145 57 151 57" stroke="#C9965E" stroke-width="3.2" fill="none" stroke-linecap="round"/>
+                <circle cx="117" cy="112" r="11" fill="#F29B9B" opacity="0.65"/>
+                <circle cx="183" cy="112" r="11" fill="#F29B9B" opacity="0.65"/>
+                <path d="M122 78 Q130 73 138 77 M162 77 Q170 73 178 78" stroke="#C9965E" stroke-width="2.6" fill="none" stroke-linecap="round"/>
+                <ellipse cx="132" cy="96" rx="10" ry="12" fill="#2A1E14"/>
+                <ellipse cx="168" cy="96" rx="10" ry="12" fill="#2A1E14"/>
+                <circle cx="135.5" cy="91" r="4" fill="#FFFFFF"/>
+                <circle cx="171.5" cy="91" r="4" fill="#FFFFFF"/>
+                <circle cx="128.5" cy="100" r="1.8" fill="#FFFFFF"/>
+                <circle cx="164.5" cy="100" r="1.8" fill="#FFFFFF"/>
+                <path d="M148 106 Q150 108 152 106" stroke="#C98A6A" stroke-width="2" fill="none" stroke-linecap="round"/>
+                <path d="M134 116 Q150 138 166 116 Z" fill="#B3473F"/>
+                <ellipse cx="150" cy="128" rx="7" ry="3.5" fill="#E07A7A"/>
+                <g transform="rotate(-12 150 48)">
+                <rect x="126" y="6" width="48" height="40" rx="3" fill="#111111"/>
+                <rect x="126" y="32" width="48" height="7" fill="#D4AF37"/>
+                <ellipse cx="150" cy="46" rx="38" ry="7" fill="#111111"/>
+                </g>
+                </g>
+            </g>`;
+        }
+
+        // Dec 27-31 celebrates next year; Jan 1-6 the one that just started
+        function comingYear(now) {
+            now = now || new Date();
+            return now.getMonth() === 11 ? now.getFullYear() + 1 : now.getFullYear();
+        }
+
+        // Small New Year's items that take the stars' place
+        const NEWYEAR_ITEMS = `
+            <defs>
+                <g id="ni-glass"><path d="M-6 -8 L6 -8 Q6 0 0 1 Q-6 0 -6 -8 Z" fill="#D4AF37"/><rect x="-0.6" y="1" width="1.2" height="7" fill="#D4AF37"/><rect x="-3.5" y="8" width="7" height="1.4" fill="#D4AF37"/></g>
+                <path id="ni-spark" d="M0 -8 L1.6 -1.6 L8 0 L1.6 1.6 L0 8 L-1.6 1.6 L-8 0 L-1.6 -1.6 Z" fill="#F4EEDD"/>
+                <g id="ni-burst" stroke="#D4AF37" stroke-width="1.4" stroke-linecap="round"><path d="M0 -9 L0 -4 M0 4 L0 9 M-9 0 L-4 0 M4 0 L9 0 M-6.4 -6.4 L-3 -3 M3 3 L6.4 6.4 M-6.4 6.4 L-3 3 M3 -3 L6.4 -6.4"/></g>
+                <g id="ni-clock"><circle r="8" fill="#F4EEDD"/><circle r="8" fill="none" stroke="#D4AF37" stroke-width="1.6"/><path d="M0 0 L0 -6 M0 0 L0.4 -5" stroke="#111" stroke-width="1.4" stroke-linecap="round"/></g>
+            </defs>`;
+
+        // Per-theme overlay art (a string, or a function for art that changes);
+        // `items` replace the stars with those symbols
         const MOON_SCENES = {
             ranch: { art: RANCH_HORSE_ART },
             thanksgiving: { art: TURKEY_ART, defs: THANKSGIVING_ITEMS, items: ['ti-pumpkin', 'ti-leaf', 'ti-acorn', 'ti-corn', 'ti-pie'] },
-            christmas: { art: SANTA_ART, defs: CHRISTMAS_ITEMS, items: ['ci-cane', 'ci-ornament', 'ci-gift', 'ci-mint'] }
+            christmas: { art: SANTA_ART, defs: CHRISTMAS_ITEMS, items: ['ci-cane', 'ci-ornament', 'ci-gift', 'ci-mint'] },
+            newyear: { art: () => babyNewYearArt(comingYear()), defs: NEWYEAR_ITEMS, items: ['ni-glass', 'ni-spark', 'ni-burst', 'ni-clock'] }
         };
 
         // Full-screen moonrise celebrating whoever shot the moon. Tap, Escape or
@@ -1306,7 +1415,7 @@ async function checkNewPlayer(selectElement, seatIndex) {
                         <filter id="moon-blur" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="12"/></filter>
                     </defs>
                     <circle class="moon-halo" cx="100" cy="100" r="78" fill="var(--moon-glow)" filter="url(#moon-blur)"/>
-                    ${scene.art}
+                    ${typeof scene.art === 'function' ? scene.art() : scene.art}
                 </svg>
                 <div class="moon-text relative text-center mt-6" role="status" aria-live="polite">
                     <div class="font-display text-3xl font-extrabold text-[var(--moon)]" style="letter-spacing: var(--word-tracking); text-transform: var(--word-case);">${escapeHtml(name)} shot the moon</div>
