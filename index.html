@@ -159,6 +159,8 @@
         #game-select option { background: var(--surface); color: var(--ink); }
         /* Shrink the dropdown to the chosen game's name so the arrow sits next to it */
         #game-select { field-sizing: content; }
+        /* "Gin Rummy" is longer than "Hearts"; a step smaller keeps it clear of the Theme and Stats buttons */
+        [data-game="gin"] #game-select { font-size: 1.5rem; line-height: 2rem; }
 
         body {
             background: var(--bg);
@@ -357,7 +359,7 @@
                 <label for="game-select" class="sr-only">Game</label>
                 <select id="game-select" onchange="setGame(this.value)" class="font-display text-3xl font-extrabold tracking-tight text-[var(--accent)] bg-transparent appearance-none cursor-pointer text-center focus:outline-none" style="letter-spacing: var(--word-tracking); text-transform: var(--word-case);">
                     <option value="hearts">Hearts</option>
-                    <option value="gin">Gin</option>
+                    <option value="gin">Gin Rummy</option>
                 </select>
                 <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="pointer-events-none"><path d="M6 9l6 6 6-6"/></svg>
             </h1>
@@ -372,7 +374,7 @@
         <!-- GIN SETUP (placeholder until Gin scorekeeping is built) -->
         <div id="gin-setup" class="hidden">
             <div class="bg-slate-800/80 rounded-3xl p-6 border border-slate-700/50 shadow-xl text-center text-slate-400 text-sm">
-                Gin scorekeeping is coming soon.
+                Gin Rummy scorekeeping is coming soon.
             </div>
         </div>
 
@@ -495,7 +497,7 @@
             <button onclick="closeStatsView()" class="text-slate-300 hover:text-white bg-slate-800/80 hover:bg-slate-800 border border-slate-700/50 px-3 py-2 rounded-xl transition-all active:scale-95">
                 ← Back
             </button>
-            <h1 class="font-display text-2xl font-extrabold tracking-tight text-[var(--accent)]" style="letter-spacing: var(--word-tracking); text-transform: var(--word-case);">Gin Stats</h1>
+            <h1 class="font-display text-2xl font-extrabold tracking-tight text-[var(--accent)]" style="letter-spacing: var(--word-tracking); text-transform: var(--word-case);">Gin Rummy Stats</h1>
         </div>
         <div class="bg-slate-800/80 rounded-3xl p-6 border border-slate-700/50 shadow-xl text-center text-slate-400 text-sm">
             No Gin games recorded yet.
@@ -871,15 +873,12 @@
                 const meta = THEME_META[key];
                 const isActive = key === current;
                 const swatchHtml = meta.icon
-                    ? `<span class="w-8 h-8 rounded-full flex-shrink-0 overflow-hidden">${meta.icon}</span>`
-                    : `<span class="w-8 h-8 rounded-full flex-shrink-0" style="background:${meta.swatch}; box-shadow: 0 0 0 1px var(--muted);"></span>`;
-                const labelHtml = meta.icon
-                    ? ''
-                    : `<span class="flex-1 min-w-0 font-bold text-white">${meta.label}${isActive ? ' &middot; current' : ''}</span>`;
+                    ? `<span class="w-10 h-10 rounded-full flex-shrink-0 overflow-hidden flex items-center justify-center">${meta.icon}</span>`
+                    : `<span class="w-10 h-10 rounded-full flex-shrink-0" style="background:${meta.swatch}; box-shadow: 0 0 0 1px var(--muted);"></span>`;
+                // Colors and icons only, no labels; the name stays available to screen readers
                 optionsHtml += `
-                    <button onclick="setTheme('${key}')" aria-label="${meta.label}${isActive ? ' (current)' : ''}" class="w-full flex items-center gap-3 text-left p-4 rounded-2xl border-2 transition-colors ${isActive ? 'border-[var(--accent)] bg-[var(--accent-soft)]' : 'border-slate-700/50 hover:bg-slate-700/50'}">
+                    <button onclick="setTheme('${key}')" aria-label="${meta.label}${isActive ? ' (current)' : ''}" title="${meta.label}" class="w-20 h-20 flex items-center justify-center rounded-2xl border-2 transition-colors ${isActive ? 'border-[var(--accent)] bg-[var(--accent-soft)]' : 'border-slate-700/50 hover:bg-slate-700/50'}">
                         ${swatchHtml}
-                        ${labelHtml}
                     </button>`;
             });
 
@@ -887,7 +886,7 @@
                 <div class="bg-slate-800 border border-slate-700/50 p-6 rounded-3xl w-full max-w-sm shadow-2xl">
                     <h3 class="text-lg font-bold text-white mb-1 text-center">Choose a Theme</h3>
                     <p class="text-slate-400 text-sm mb-5 text-center">Applies on this device only.</p>
-                    <div class="space-y-3 mb-4">${optionsHtml}</div>
+                    <div class="flex flex-wrap justify-center gap-3 mb-5">${optionsHtml}</div>
                     <button onclick="document.getElementById('theme-picker-modal').remove()" class="w-full bg-slate-700 text-slate-300 py-3 rounded-xl font-bold hover:bg-slate-600 transition-colors">Close</button>
                 </div>`;
             document.body.appendChild(box);
