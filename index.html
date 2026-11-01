@@ -62,6 +62,22 @@
             --moon:#F1E6D2; --moon-glow:rgba(241,230,210,0.5);
         }
 
+        /* Seasonal: Nov 1 through Thanksgiving Day (see isThemeInSeason) */
+        [data-theme="thanksgiving"] {
+            --bg:#F6EDDC; --surface:#FFFBF3; --surface-2:#F1E4C8; --surface-hover:#E8D8B6;
+            --ink:#2E2418; --muted:#5A4A30; --border:#D8C29A;
+            --accent:#7E2233; --accent-soft:rgba(126,34,51,0.10); --accent-soft-2:rgba(126,34,51,0.24);
+            --accent2:#8C6420; --accent2-soft:rgba(140,100,32,0.12); --accent2-soft-2:rgba(140,100,32,0.26);
+            --success:#5E6B22; --success-soft:rgba(94,107,34,0.12); --success-soft-2:rgba(94,107,34,0.26);
+            --bronze:#B5502E; --silver-soft:rgba(90,74,48,0.14);
+            --on-accent:#FFF6E6; --on-accent2:#FFF6E6; --on-success:#FFF6E6;
+            --font-display:'Cooper Black','Bookman Old Style',Rockwell,Georgia,serif;
+            --font-body:'Segoe UI','Seravek','Helvetica Neue',Arial,sans-serif;
+            --radius-lg:26px; --radius-md:20px; --radius-sm:999px;
+            --word-tracking:0em; --word-case:none;
+            --moon:#F6EDDC; --moon-glow:rgba(217,162,58,0.5);
+        }
+
         body {
             background: var(--bg);
             color: var(--ink);
@@ -203,11 +219,27 @@
         }
     </style>
     <script>
+        // US Thanksgiving: the fourth Thursday of November
+        function thanksgivingDay(year) {
+            var firstWeekday = new Date(year, 10, 1).getDay();
+            return 1 + ((4 - firstWeekday + 7) % 7) + 21;
+        }
+
+        // Seasonal themes only exist in the picker during their window
+        // (device's local date). Year-round themes are always in season.
+        function isThemeInSeason(name, now) {
+            now = now || new Date();
+            if (name === 'thanksgiving') {
+                return now.getMonth() === 10 && now.getDate() <= thanksgivingDay(now.getFullYear());
+            }
+            return true;
+        }
+
         // Apply saved theme before first paint to avoid a flash of the default theme
         (function () {
             try {
                 var saved = localStorage.getItem('hearts_theme_v1');
-                if (saved === 'dark' || saved === 'ranch') {
+                if ((saved === 'dark' || saved === 'ranch' || saved === 'thanksgiving') && isThemeInSeason(saved)) {
                     document.documentElement.setAttribute('data-theme', saved);
                 }
             } catch (err) { /* localStorage unavailable, fall back to default light */ }
@@ -615,10 +647,29 @@
             <rect x="10" y="15" width="4" height="6" fill="#141110"/>
         </svg>`;
 
+        const TURKEY_ICON = `<svg viewBox="0 0 64 64" width="32" height="32" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <g transform="translate(32 40)">
+                <ellipse cx="0" cy="-17" rx="6" ry="14" fill="#7E2233" transform="rotate(-64)"/>
+                <ellipse cx="0" cy="-17" rx="6" ry="14" fill="#D9A23A" transform="rotate(-32)"/>
+                <ellipse cx="0" cy="-17" rx="6" ry="14" fill="#B5502E"/>
+                <ellipse cx="0" cy="-17" rx="6" ry="14" fill="#D9A23A" transform="rotate(32)"/>
+                <ellipse cx="0" cy="-17" rx="6" ry="14" fill="#7E2233" transform="rotate(64)"/>
+            </g>
+            <ellipse cx="32" cy="42" rx="11" ry="13" fill="#6B4226"/>
+            <circle cx="32" cy="27" r="7" fill="#8A5A36"/>
+            <circle cx="29.5" cy="25.5" r="1.4" fill="#2E2418"/>
+            <circle cx="34.5" cy="25.5" r="1.4" fill="#2E2418"/>
+            <polygon points="30,28.5 34,28.5 32,32" fill="#E2A23A"/>
+            <ellipse cx="33.6" cy="33.5" rx="1.8" ry="3" fill="#B3263A"/>
+            <path d="M28 54 L27 60 M36 54 L37 60" stroke="#C47F2A" stroke-width="2.2" stroke-linecap="round"/>
+        </svg>`;
+
+        // `icon` themes show only their picture in the picker, no label
         const THEME_META = {
             light: { label: 'Light', swatch: '#2F5233', bg: '#FBF9F3' },
             dark: { label: 'Dark', swatch: '#C98A2B', bg: '#17130F' },
-            ranch: { label: 'Ranch', swatch: '#8C1D18', bg: '#141110' }
+            ranch: { label: 'Ranch', swatch: '#8C1D18', bg: '#141110', icon: BARN_ICON },
+            thanksgiving: { label: 'Thanksgiving', swatch: '#7E2233', bg: '#F6EDDC', icon: TURKEY_ICON }
         };
 
         function applyTheme(name) {
@@ -651,14 +702,13 @@
             box.className = "fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4";
 
             let optionsHtml = '';
-            Object.keys(THEME_META).forEach((key) => {
+            Object.keys(THEME_META).filter((key) => isThemeInSeason(key)).forEach((key) => {
                 const meta = THEME_META[key];
                 const isActive = key === current;
-                const isRanch = key === 'ranch';
-                const swatchHtml = isRanch
-                    ? `<span class="w-8 h-8 rounded-full flex-shrink-0 overflow-hidden">${BARN_ICON}</span>`
+                const swatchHtml = meta.icon
+                    ? `<span class="w-8 h-8 rounded-full flex-shrink-0 overflow-hidden">${meta.icon}</span>`
                     : `<span class="w-8 h-8 rounded-full flex-shrink-0" style="background:${meta.swatch}"></span>`;
-                const labelHtml = isRanch
+                const labelHtml = meta.icon
                     ? ''
                     : `<span class="flex-1 min-w-0 font-bold text-white">${meta.label}${isActive ? ' &middot; current' : ''}</span>`;
                 optionsHtml += `
@@ -681,6 +731,11 @@
         (function initTheme() {
             let saved = 'light';
             try { saved = localStorage.getItem(THEME_KEY) || 'light'; } catch (err) { /* ignore */ }
+            // A seasonal theme whose window has ended falls back to Light
+            if (!THEME_META[saved] || !isThemeInSeason(saved)) {
+                saved = 'light';
+                try { localStorage.setItem(THEME_KEY, saved); } catch (err) { /* ignore */ }
+            }
             applyTheme(saved);
         })();
 
@@ -1077,15 +1132,72 @@ async function checkNewPlayer(selectElement, seatIndex) {
             <ellipse cx="89" cy="182" rx="4.5" ry="6" fill="#2A2220" transform="rotate(15 89 182)"/>
             <ellipse cx="111" cy="182" rx="4.5" ry="6" fill="#2A2220" transform="rotate(-15 111 182)"/>`;
 
+        // Thanksgiving swaps the moon for a big turkey, backlit by a warm glow
+        // (drawn in a 300x230 box, scaled into the overlay's 200x200 one)
+        const TURKEY_ART = `
+            <defs>
+                <filter id="turkey-glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="16"/></filter>
+            </defs>
+            <g transform="translate(-20 8) scale(0.8)">
+                <circle cx="150" cy="122" r="112" fill="#D9A23A" opacity="0.28" filter="url(#turkey-glow)"/>
+                <circle cx="150" cy="128" r="78" fill="#F2C76A" opacity="0.38" filter="url(#turkey-glow)"/>
+                <circle cx="150" cy="140" r="46" fill="#FFE3A0" opacity="0.32" filter="url(#turkey-glow)"/>
+                <g transform="translate(150 146)">
+                    <g transform="rotate(-75)"><ellipse cx="0" cy="-58" rx="17" ry="46" fill="#7E2233"/><ellipse cx="0" cy="-62" rx="8" ry="34" fill="#A33A4A"/></g>
+                    <g transform="rotate(-50)"><ellipse cx="0" cy="-58" rx="17" ry="46" fill="#D9A23A"/><ellipse cx="0" cy="-62" rx="8" ry="34" fill="#EBC46A"/></g>
+                    <g transform="rotate(-25)"><ellipse cx="0" cy="-58" rx="17" ry="46" fill="#B5502E"/><ellipse cx="0" cy="-62" rx="8" ry="34" fill="#D27148"/></g>
+                    <g transform="rotate(0)"><ellipse cx="0" cy="-58" rx="17" ry="46" fill="#7E2233"/><ellipse cx="0" cy="-62" rx="8" ry="34" fill="#A33A4A"/></g>
+                    <g transform="rotate(25)"><ellipse cx="0" cy="-58" rx="17" ry="46" fill="#B5502E"/><ellipse cx="0" cy="-62" rx="8" ry="34" fill="#D27148"/></g>
+                    <g transform="rotate(50)"><ellipse cx="0" cy="-58" rx="17" ry="46" fill="#D9A23A"/><ellipse cx="0" cy="-62" rx="8" ry="34" fill="#EBC46A"/></g>
+                    <g transform="rotate(75)"><ellipse cx="0" cy="-58" rx="17" ry="46" fill="#7E2233"/><ellipse cx="0" cy="-62" rx="8" ry="34" fill="#A33A4A"/></g>
+                </g>
+                <ellipse cx="104" cy="162" rx="18" ry="30" fill="#5A3620" transform="rotate(24 104 162)"/>
+                <ellipse cx="196" cy="162" rx="18" ry="30" fill="#5A3620" transform="rotate(-24 196 162)"/>
+                <ellipse cx="150" cy="160" rx="50" ry="45" fill="#6B4226"/>
+                <ellipse cx="150" cy="168" rx="33" ry="33" fill="#8A5A36"/>
+                <ellipse cx="150" cy="104" rx="16" ry="19" fill="#8A5A36"/>
+                <circle cx="143" cy="99" r="4.2" fill="#FFF6E6"/><circle cx="157" cy="99" r="4.2" fill="#FFF6E6"/>
+                <circle cx="143.6" cy="99.6" r="2.2" fill="#2E2418"/><circle cx="156.4" cy="99.6" r="2.2" fill="#2E2418"/>
+                <polygon points="144,107 156,107 150,117" fill="#E2A23A"/>
+                <ellipse cx="156" cy="119" rx="3.6" ry="8" fill="#B3263A"/>
+                <g stroke="#C47F2A" stroke-width="4" stroke-linecap="round" fill="none">
+                    <path d="M134 202 L131 216 M131 216 L123 220 M131 216 L131 224 M131 216 L138 220"/>
+                    <path d="M166 202 L169 216 M169 216 L162 220 M169 216 L169 224 M169 216 L177 220"/>
+                </g>
+            </g>`;
+
+        // Small Thanksgiving items that take the stars' place, each about 18 units tall
+        const THANKSGIVING_ITEMS = `
+            <defs>
+                <g id="ti-pumpkin"><ellipse cx="-4" cy="2" rx="5" ry="6" fill="#B85424"/><ellipse cx="4" cy="2" rx="5" ry="6" fill="#B85424"/><ellipse cx="0" cy="2" rx="5" ry="7" fill="#D2702F"/><path d="M0 -5 C0 -7 1 -9 3 -9.5" stroke="#6E7F35" stroke-width="1.6" fill="none" stroke-linecap="round"/></g>
+                <g id="ti-leaf"><path d="M0 -9 L1.5 -4.5 L5 -6.5 L4 -2 L8.5 -2.4 L5.2 1 L7 3.6 L2.2 3 L1.1 7.4 L0 5.6 L-1.1 7.4 L-2.2 3 L-7 3.6 L-5.2 1 L-8.5 -2.4 L-4 -2 L-5 -6.5 L-1.5 -4.5 Z" fill="#C4552C"/><path d="M0 5.6 L0 10" stroke="#8A3A1E" stroke-width="1.2" stroke-linecap="round"/></g>
+                <g id="ti-acorn"><ellipse cx="0" cy="2.5" rx="4.5" ry="6" fill="#C9962E"/><path d="M-5.5 -1 C-5.5 -5 5.5 -5 5.5 -1 Z" fill="#6B4226"/><path d="M0 -4.5 L0.8 -7.5" stroke="#6B4226" stroke-width="1.4" stroke-linecap="round"/></g>
+                <g id="ti-corn"><ellipse cx="0" cy="-1" rx="3.6" ry="8" fill="#E8B83C"/><path d="M0 8 C-6 4 -7 -2 -5 -7 C-3 -1 -1 3 0 8 Z" fill="#6E7F35"/><path d="M0 8 C6 4 7 -2 5 -7 C3 -1 1 3 0 8 Z" fill="#5E5E22"/></g>
+                <g id="ti-pie"><path d="M-7 5 L7 5 L0 -8 Z" fill="#D9A23A"/><path d="M-7 5 L7 5 L6 7.5 L-6 7.5 Z" fill="#B87A2A"/><path d="M-3.5 -1 L3.5 -1" stroke="#FFF6E6" stroke-width="1.3" stroke-linecap="round" opacity="0.8"/></g>
+            </defs>`;
+
+        // Per-theme overlay art; `items` replace the stars with those symbols
+        const MOON_SCENES = {
+            ranch: { art: RANCH_HORSE_ART },
+            thanksgiving: { art: TURKEY_ART, defs: THANKSGIVING_ITEMS, items: ['ti-pumpkin', 'ti-leaf', 'ti-acorn', 'ti-corn', 'ti-pie'] }
+        };
+
         // Full-screen moonrise celebrating whoever shot the moon. Tap, Escape or
         // ~2.6s dismisses it.
         function showMoonAnimation(name) {
             const existing = document.getElementById('moon-overlay');
             if (existing) existing.remove();
 
-            const stars = MOON_STARS.map(([x, y, r], i) =>
-                `<circle class="moon-star" cx="${x}" cy="${y}" r="${r * 0.6}" fill="var(--moon)" style="animation-delay:${(i * 0.37) % 1.6}s"/>`
-            ).join('');
+            const scene = MOON_SCENES[getCurrentTheme()] || { art: MOON_ART };
+            const stars = (scene.defs || '') + MOON_STARS.map(([x, y, r], i) => {
+                const delay = `animation-delay:${(i * 0.37) % 1.6}s`;
+                if (!scene.items) {
+                    return `<circle class="moon-star" cx="${x}" cy="${y}" r="${r * 0.6}" fill="var(--moon)" style="${delay}"/>`;
+                }
+                const item = scene.items[i % scene.items.length];
+                const tilt = ((i * 47) % 60) - 30;
+                return `<use class="moon-star" href="#${item}" transform="translate(${x} ${y}) rotate(${tilt}) scale(${0.16 + r * 0.08})" style="${delay}"/>`;
+            }).join('');
 
             const overlay = document.createElement('div');
             overlay.id = 'moon-overlay';
@@ -1093,12 +1205,12 @@ async function checkNewPlayer(selectElement, seatIndex) {
             overlay.style.background = "rgba(0,0,0,0.8)"; // night sky in every theme
             overlay.innerHTML = `
                 <svg class="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid slice" aria-hidden="true">${stars}</svg>
-                <svg class="moon-body relative w-48 h-48" viewBox="0 0 200 200" aria-hidden="true">
+                <svg class="moon-body relative w-48 h-48" viewBox="0 0 200 200" overflow="visible" aria-hidden="true">
                     <defs>
                         <filter id="moon-blur" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="12"/></filter>
                     </defs>
                     <circle class="moon-halo" cx="100" cy="100" r="78" fill="var(--moon-glow)" filter="url(#moon-blur)"/>
-                    ${getCurrentTheme() === 'ranch' ? RANCH_HORSE_ART : MOON_ART}
+                    ${scene.art}
                 </svg>
                 <div class="moon-text relative text-center mt-6" role="status" aria-live="polite">
                     <div class="font-display text-3xl font-extrabold text-[var(--moon)]" style="letter-spacing: var(--word-tracking); text-transform: var(--word-case);">${escapeHtml(name)} shot the moon</div>
