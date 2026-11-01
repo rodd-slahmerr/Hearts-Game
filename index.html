@@ -126,13 +126,13 @@
 
         /* ---- Gin: each year-round theme inverted (its accent becomes the background) so the game reads at a glance ---- */
         [data-game="gin"]:not([data-theme]), [data-game="gin"][data-theme="light"] {
-            --bg:#1F3A24; --surface:#284A2E; --surface-2:#2F5535; --surface-hover:#376040;
-            --ink:#FBF9F3; --muted:#C9D3C2; --border:#3F6A47;
+            --bg:#33603A; --surface:#3B6B43; --surface-2:#427349; --surface-hover:#4A7D51;
+            --ink:#FBF9F3; --muted:#DDE6D7; --border:#5A8C61;
             --accent:#FBF9F3; --accent-soft:rgba(251,249,243,0.10); --accent-soft-2:rgba(251,249,243,0.24);
             --accent2:#D9B98A; --accent2-soft:rgba(217,185,138,0.14); --accent2-soft-2:rgba(217,185,138,0.30);
             --success:#9CC9A2; --success-soft:rgba(156,201,162,0.14); --success-soft-2:rgba(156,201,162,0.30);
             --bronze:#D9A066; --silver-soft:rgba(201,211,194,0.16);
-            --on-accent:#1F3A24; --on-accent2:#1F3A24; --on-success:#1F3A24;
+            --on-accent:#24472A; --on-accent2:#24472A; --on-success:#24472A;
         }
 
         [data-game="gin"][data-theme="dark"] {
@@ -146,13 +146,13 @@
         }
 
         [data-game="gin"][data-theme="ranch"] {
-            --bg:#8C1D18; --surface:#741712; --surface-2:#651410; --surface-hover:#5A120E;
-            --ink:#F4EADB; --muted:#E0C7BC; --border:#A8423B;
-            --accent:#F4EADB; --accent-soft:rgba(244,234,219,0.12); --accent-soft-2:rgba(244,234,219,0.26);
+            --bg:#A3352C; --surface:#8E2C24; --surface-2:#82271F; --surface-hover:#76221B;
+            --ink:#F7EEE2; --muted:#F2DED4; --border:#C05A4F;
+            --accent:#F7EEE2; --accent-soft:rgba(247,238,226,0.12); --accent-soft-2:rgba(247,238,226,0.26);
             --accent2:#141110; --accent2-soft:rgba(20,17,16,0.20); --accent2-soft-2:rgba(20,17,16,0.36);
             --success:#C9DDBF; --success-soft:rgba(201,221,191,0.14); --success-soft-2:rgba(201,221,191,0.30);
             --bronze:#E0A060; --silver-soft:rgba(224,199,188,0.16);
-            --on-accent:#8C1D18; --on-accent2:#F4EADB; --on-success:#8C1D18;
+            --on-accent:#8C1D18; --on-accent2:#F7EEE2; --on-success:#8C1D18;
         }
 
         /* Native dropdown list stays readable in every theme */
@@ -803,9 +803,9 @@
 
         // `icon` themes show only their picture in the picker, no label
         const THEME_META = {
-            light: { label: 'Light', swatch: '#2F5233', bg: '#FBF9F3', ginBg: '#1F3A24' },
+            light: { label: 'Light', swatch: '#2F5233', bg: '#FBF9F3', ginBg: '#33603A' },
             dark: { label: 'Dark', swatch: '#C98A2B', bg: '#17130F', ginBg: '#F3E9D6' },
-            ranch: { label: 'Ranch', swatch: '#8C1D18', bg: '#141110', ginBg: '#8C1D18', icon: BARN_ICON },
+            ranch: { label: 'Ranch', swatch: '#8C1D18', bg: '#141110', ginBg: '#A3352C', icon: BARN_ICON },
             thanksgiving: { label: 'Thanksgiving', swatch: '#7E2233', bg: '#F6EDDC', icon: TURKEY_ICON },
             christmas: { label: 'Christmas', swatch: '#B3162E', bg: '#FBF3E8', icon: CANDY_CANE_ICON },
             newyear: { label: "New Year's", swatch: '#D4AF37', bg: '#0A0A0A', icon: CHAMPAGNE_ICON }
@@ -872,7 +872,7 @@
                 const isActive = key === current;
                 const swatchHtml = meta.icon
                     ? `<span class="w-8 h-8 rounded-full flex-shrink-0 overflow-hidden">${meta.icon}</span>`
-                    : `<span class="w-8 h-8 rounded-full flex-shrink-0" style="background:${meta.swatch}"></span>`;
+                    : `<span class="w-8 h-8 rounded-full flex-shrink-0" style="background:${meta.swatch}; box-shadow: 0 0 0 1px var(--muted);"></span>`;
                 const labelHtml = meta.icon
                     ? ''
                     : `<span class="flex-1 min-w-0 font-bold text-white">${meta.label}${isActive ? ' &middot; current' : ''}</span>`;
